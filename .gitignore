@@ -1,5 +1,5 @@
 # IDE files
 .idea/
 #virtualenv
-.venv/
+venv/
 

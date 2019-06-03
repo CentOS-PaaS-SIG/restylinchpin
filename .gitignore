@@ -1,0 +1,8 @@
+# IDE files
+.idea/
+#virtualenv
+venv/
+*.pyc
+*.swp
+.cache
+.pytest_cache

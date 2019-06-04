@@ -1,9 +1,8 @@
-FROM ubuntu:latest
+FROM fedora:30
 MAINTAINER Mansi Kulkarni "mankulka@redhat.com"
-RUN apt-get update -y
-RUN apt-get install -y python3-pip python3-dev build-essential
+RUN dnf -y install python3-pip python3-devel && dnf clean all
 COPY . /app
 WORKDIR /app
 RUN pip3 install -r requirements.txt
 ENTRYPOINT ["python3"]
-CMD ["app.py"]x
+CMD ["app.py"]

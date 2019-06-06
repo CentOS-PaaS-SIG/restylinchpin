@@ -1,1 +1,2 @@
-working_path: /pointing/to/path/where/workspaces/are/stored
+# place where all the created workspaces are stored
+working_path: /tmp

@@ -28,6 +28,23 @@ def linchpin_init():
         return jsonify(status=409, code=output.returncode)
 
 
+@app.route('/workspace/delete', methods=['POST'])
+def linchpin_delete_workspace():
+    try:
+        data = request.json  # Get request body
+        name = data["name"]
+        # path specifying location of working directory inside server
+        for x in os.listdir(os.path.join(app.root_path)):
+            if x == name:
+                output = subprocess.Popen(["rm", "-r", os.path.join(app.root_path + WORKING_DIR + name)]
+                                          , stdout=subprocess.PIPE)
+                return jsonify(status="Workspace " + name + " deleted successfully", Code=output.returncode)
+        return jsonify(status="Workspace " + name + " not found")
+    except Exception as e:
+        print(e)
+        return jsonify(status=409, code=output.returncode)
+
+
 if __name__ == "__main__":
     app.run(host='0.0.0.0', debug=True)
 

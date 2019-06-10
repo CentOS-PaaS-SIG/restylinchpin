@@ -2,6 +2,7 @@ from flask import Flask, jsonify, request, Response
 import subprocess
 import os
 import yaml
+import shutil
 
 app = Flask(__name__)
 
@@ -34,15 +35,14 @@ def linchpin_delete_workspace():
         data = request.json  # Get request body
         name = data["name"]
         # path specifying location of working directory inside server
-        for x in os.listdir(os.path.join(app.root_path)):
+        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
             if x == name:
-                output = subprocess.Popen(["rm", "-r", os.path.join(app.root_path + WORKING_DIR + name)]
-                                          , stdout=subprocess.PIPE)
-                return jsonify(name=name, status="Workspace deleted successfully", Code=output.returncode)
+                shutil.rmtree(os.path.join(app.root_path + WORKING_DIR + name))
+                return jsonify(name=name, status="Workspace deleted successfully")
         return jsonify(status="Workspace " + name + " not found")
     except Exception as e:
         print(e)
-        return jsonify(status=409, code=output.returncode)
+        return jsonify(status=409, message=str(e))
 
 
 if __name__ == "__main__":

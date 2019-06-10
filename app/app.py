@@ -37,7 +37,7 @@ def linchpin_delete_workspace():
         # path specifying location of working directory inside server
         for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
             if x == name:
-                shutil.rmtree(os.path.join(app.root_path + WORKING_DIR + name))
+                shutil.rmtree(name)
                 return jsonify(name=name, status="Workspace deleted successfully")
         return jsonify(status="Workspace " + name + " not found")
     except Exception as e:

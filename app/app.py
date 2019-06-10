@@ -43,7 +43,7 @@ def linchpin_list_workspace():
         return Response(json.dumps(workspace_array), status=200, mimetype='application/json')
     except Exception as e:
         print(e)
-        return jsonify(status=409)
+        return jsonify(status=409, message=str(e))
 
 
 @app.route('/workspace/delete', methods=['POST'])

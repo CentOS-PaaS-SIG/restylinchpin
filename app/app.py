@@ -61,7 +61,7 @@ def linchpin_delete_workspace():
                 return jsonify(name=name, status="Workspace deleted successfully")
         return jsonify(status="Workspace " + name + " not found")
     except Exception as e:
-        print(e)
+        app.logger.error(e)
         return jsonify(status=409, message=str(e))
 
 

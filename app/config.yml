@@ -1,1 +1,2 @@
-working_path: /pointing/to/path/where/workspaces/are/stored
+working_path: /tmp
+logger_file_name: restylinchpin.log

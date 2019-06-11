@@ -14,6 +14,7 @@ with open('config.yml', 'r') as f:
     doc = yaml.load(f)
 
 WORKING_DIR = doc['working_path']
+LOGGER_FILE = doc['logger_file_name']
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
@@ -47,7 +48,7 @@ def linchpin_list_workspace():
 
 
 if __name__ == "__main__":
-    handler = RotatingFileHandler('restylinchpin.log', maxBytes=10000, backupCount=1)
+    handler = RotatingFileHandler(LOGGER_FILE, maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)
     app.logger.addHandler(handler)
     app.run(host='0.0.0.0', debug=True)

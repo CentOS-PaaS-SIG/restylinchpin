@@ -3,10 +3,11 @@ import subprocess
 import os
 import yaml
 import shutil
+import json
 
 app = Flask(__name__)
 
-# Reading directory path from config.json file
+# Reading directory path from config.yml file
 
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)
@@ -27,6 +28,21 @@ def linchpin_init():
     except Exception as e:
         print(e)
         return jsonify(status=409, code=output.returncode)
+
+# Route for listing all workspaces
+@app.route('/workspace/list', methods=['GET'])
+def linchpin_list_workspace():
+    try:
+        workspace_array = []
+        # path specifying location of working directory inside server
+        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
+            if os.path.isdir(x):
+                workspace_dict = {'name ': x}
+                workspace_array.append(workspace_dict)
+        return Response(json.dumps(workspace_array), status=200, mimetype='application/json')
+    except Exception as e:
+        print(e)
+        return jsonify(status=409, message=str(e))
 
 
 @app.route('/workspace/delete', methods=['POST'])

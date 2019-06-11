@@ -1,2 +1,3 @@
 # place where all the created workspaces are stored
 working_path: /tmp
+logger_file_name: restylinchpin.log

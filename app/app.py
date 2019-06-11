@@ -2,11 +2,12 @@ from flask import Flask, jsonify, request, Response
 import subprocess
 import os
 import yaml
+import shutil
 import json
 
 app = Flask(__name__)
 
-# Reading directory path from config.json file
+# Reading directory path from config.yml file
 
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)
@@ -39,6 +40,22 @@ def linchpin_list_workspace():
                 workspace_dict = {'name ': x}
                 workspace_array.append(workspace_dict)
         return Response(json.dumps(workspace_array), status=200, mimetype='application/json')
+    except Exception as e:
+        print(e)
+        return jsonify(status=409, message=str(e))
+
+
+@app.route('/workspace/delete', methods=['POST'])
+def linchpin_delete_workspace():
+    try:
+        data = request.json  # Get request body
+        name = data["name"]
+        # path specifying location of working directory inside server
+        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
+            if x == name:
+                shutil.rmtree(name)
+                return jsonify(name=name, status="Workspace deleted successfully")
+        return jsonify(status="Workspace " + name + " not found")
     except Exception as e:
         print(e)
         return jsonify(status=409, message=str(e))

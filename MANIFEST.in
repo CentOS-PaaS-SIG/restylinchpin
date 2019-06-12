@@ -1,0 +1,4 @@
+include app/config.yml
+include requirements.txt
+include README.txt
+include LICENSE

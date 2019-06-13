@@ -1,18 +1,25 @@
 from flask import Flask, jsonify, request, Response
 from flask_swagger_ui import get_swaggerui_blueprint
-from flask_cors import CORS
+from flask_cors import CORS,cross_origin
 import subprocess
 import os
 import yaml
+import json
 
 app = Flask(__name__)
-CORS(app)
+cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)
 
-SWAGGER_URL = '/docs'  # URL for exposing Swagger UI (without trailing '/')
-API_URL = 'http://localhost:8000/posts'  # Our API url (can of course be a local resource)
+with open('swagger.json', 'r') as f:
+    jsonData = json.load(f)
+
+
+# Register blueprint at URL
+# (URL must match the one given to factory function above)
+SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = 'https:9002/employees'  # Our API url (can of course be a local resource)
 
 # Call factory function to create our blueprint
 swaggerui_blueprint = get_swaggerui_blueprint(
@@ -20,13 +27,8 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     API_URL,
     config={  # Swagger UI config overrides
         'app_name': "Test application"
-    },
+    }
 )
-
-# Register blueprint at URL
-# (URL must match the one given to factory function above)
-app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
-
 
 # Reading directory path from config.json file
 
@@ -52,6 +54,7 @@ def linchpin_init():
 
 
 if __name__ == "__main__":
+    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
     app.run(host='0.0.0.0', debug=True)
 
 

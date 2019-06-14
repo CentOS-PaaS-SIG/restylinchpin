@@ -19,7 +19,7 @@ with open('swagger.json', 'r') as f:
 # Register blueprint at URL
 # (URL must match the one given to factory function above)
 SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
-API_URL = 'https:9002/employees'  # Our API url (can of course be a local resource)
+API_URL = 'swagger.json'  # Our API url (can of course be a local resource)
 
 # Call factory function to create our blueprint
 swaggerui_blueprint = get_swaggerui_blueprint(

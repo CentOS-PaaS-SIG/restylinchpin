@@ -1,13 +1,11 @@
 from flask import Flask, jsonify, request, Response
 from flask_swagger_ui import get_swaggerui_blueprint
-from flask_cors import CORS,cross_origin
 import subprocess
 import os
 import yaml
 import json
 
 app = Flask(__name__)
-cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)

@@ -75,13 +75,13 @@ def linchpin_fetch_workspace():
         path = os.path.join(app.root_path, WORKING_DIR)
         print(app.root_path)
         #parsing Logic
-        array = ["linchpin", "fetch", "--dest " + name]
+        array = ["linchpin", "fetch", "--dest " + os.path.join(WORKING_DIR, name)]
 
         #Check for boolean value of Web flag,
         #Only true if value true is provided
         if 'web' in data:
             if data['web'] is True:
-                array.append('--web')
+                array.append("--web")
                 isWeb = True
 
         if isWeb is False and 'branch' in data:
@@ -95,9 +95,8 @@ def linchpin_fetch_workspace():
         if os.path.exists(os.path.join(app.root_path, WORKING_DIR, name)):
             return jsonify(status="workspace with the same name found try again by renaming")
         else:
-            os.chdir(os.path.join(app.root_path, WORKING_DIR))
-            subprocess.Popen(array, stdout=subprocess.PIPE)
-            return jsonify(name=data["name"], status="Workspace created successfully")
+            output = subprocess.Popen(array, stdout=subprocess.PIPE)
+            return jsonify(name=data["name"], status="Workspace created successfully", code=output.returncode)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=409, message=str(e))

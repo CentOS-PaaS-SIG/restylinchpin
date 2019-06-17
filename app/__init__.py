@@ -71,35 +71,43 @@ def linchpin_fetch_workspace():
         data = request.json  # Get request body
         name = data['name']
         url = data['url']
-        isWeb = False
-        path = os.path.join(app.root_path, WORKING_DIR)
-        print(app.root_path)
-        #parsing Logic
-        array = ["linchpin", "fetch", "--dest " + os.path.join(WORKING_DIR, name)]
+        repo = None
+        # initial list
+        cmd = ["linchpin", "-w " + WORKING_DIR + name + "/", "fetch"]
 
-        #Check for boolean value of Web flag,
-        #Only true if value true is provided
-        if 'web' in data:
-            if data['web'] is True:
-                array.append("--web")
-                isWeb = True
+        # Check for repoType field in request,
+        # Only true if it is set to web
+        if 'repoType' in data:
+            if data['repoType'] == 'web':
+                repo = 'web'
+                cmd.append("--web")
 
-        if isWeb is False and 'branch' in data:
-            array.append("--branch " + data['branch'])
+        if 'rootfolder' in data:
+            cmd.append("--root")
+            cmd.append(data['rootfolder'])
 
-        #last item to be added in the array
-        if 'url' in data:   #Check for url
-            array.append(url)
-        print(array)
+        if repo is None and 'branch' in data:
+            cmd.append("--branch")
+            cmd.append(data['branch'])
+
+        # last item to be added in the array
+        if 'url' in data:
+            cmd.append(str(url))
         # Checking if workspace already exists
         if os.path.exists(os.path.join(app.root_path, WORKING_DIR, name)):
             return jsonify(status="workspace with the same name found try again by renaming")
         else:
-            output = subprocess.Popen(array, stdout=subprocess.PIPE)
+            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            if check_workspace_empty(name):
+                return jsonify(message="Only public repositories can be used as fetch URl's")
             return jsonify(name=data["name"], status="Workspace created successfully", code=output.returncode)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=409, message=str(e))
+
+
+def check_workspace_empty(name):
+    return os.listdir(app.root_path + WORKING_DIR + name) == []
 
 
 if __name__ == "__main__":

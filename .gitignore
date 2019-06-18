@@ -8,3 +8,6 @@ venv/
 .pytest_cache
 .pypirc
 *.log
+_build
+_static
+_templates

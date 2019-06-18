@@ -47,9 +47,12 @@ def linchpin_init():
         if os.path.exists(WORKING_DIR + "/" + name):
             return jsonify(status="Workspace already exists")
         else:
-            output = subprocess.Popen(["linchpin", "-w " + WORKING_DIR + name + "/",  "init"],
+            output = subprocess.Popen(["linchpin", "-w " +
+                                       WORKING_DIR + name +
+                                       "/",  "init"],
                                       stdout=subprocess.PIPE)
-            return jsonify(name=data["name"], status="Workspace created successfully",
+            return jsonify(name=data["name"],
+                           status="Workspace created successfully",
                            Code=output.returncode)
     except Exception as e:
         app.logger.error(e)
@@ -65,7 +68,8 @@ def linchpin_list_workspace():
             if os.path.isdir(x):
                 workspace_dict = {'name ': x}
                 workspace_array.append(workspace_dict)
-        return Response(json.dumps(workspace_array), status=200, mimetype='application/json')
+        return Response(json.dumps(workspace_array), status=200,
+                        mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=409, message=str(e))
@@ -80,7 +84,8 @@ def linchpin_delete_workspace():
         for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
             if x == name:
                 shutil.rmtree(name)
-                return jsonify(name=name, status="Workspace deleted successfully")
+                return jsonify(name=name,
+                               status="Workspace deleted successfully")
         return jsonify(status="Workspace " + name + " not found")
     except Exception as e:
         app.logger.error(e)
@@ -114,13 +119,17 @@ def linchpin_fetch_workspace():
         if 'url' in data:
             cmd.append(str(url))
         # Checking if workspace already exists
-        if os.path.exists(os.path.join(app.root_path, WORKING_DIR + "/" + name)):
-            return jsonify(status="workspace with the same name found try again by renaming")
+        if os.path.exists(os.path.join(app.root_path,
+                                       WORKING_DIR + "/" + name)):
+            return jsonify(status="workspace with the same "
+                                  "name found try again by renaming")
         else:
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             if check_workspace_empty(name):
-                return jsonify(message="Only public repositories can be used as fetch URl's")
-            return jsonify(name=data["name"], status="Workspace created successfully",
+                return jsonify(message="Only public repositories can be "
+                                       "used as fetch URl's")
+            return jsonify(name=data["name"], status="Workspace created "
+                                                     "successfully",
                            code=output.returncode)
     except Exception as e:
         app.logger.error(e)

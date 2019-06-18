@@ -6,3 +6,8 @@ venv/
 *.swp
 .cache
 .pytest_cache
+.pypirc
+*.log
+docs/_build
+_static
+_templates

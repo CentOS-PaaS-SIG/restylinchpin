@@ -1,0 +1,128 @@
+DEBUG 2019-06-17 09:44:54,291 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /sou
+DEBUG 2019-06-17 09:44:54,291 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /sou/dummy
+DEBUG 2019-06-17 09:56:14,380 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/
+DEBUG 2019-06-17 11:30:37,464 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test
+DEBUG 2019-06-17 11:30:37,467 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test/dummy
+DEBUG 2019-06-17 11:31:01,255 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test
+DEBUG 2019-06-17 11:31:01,255 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test/dummy
+DEBUG 2019-06-17 11:31:44,069 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test
+DEBUG 2019-06-17 11:31:44,069 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test/dummy
+DEBUG 2019-06-17 11:35:09,169 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test
+DEBUG 2019-06-17 11:35:09,170 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test/dummy
+DEBUG 2019-06-17 11:36:12,892 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test
+DEBUG 2019-06-17 11:36:12,892 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test/dummy
+DEBUG 2019-06-17 11:36:43,955 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /testingg
+DEBUG 2019-06-17 11:36:43,956 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /testingg/dummy
+DEBUG 2019-06-17 13:59:55,996 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testingg
+DEBUG 2019-06-17 13:59:55,997 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testingg/
+DEBUG 2019-06-17 14:37:19,484 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testingg
+DEBUG 2019-06-17 14:37:19,485 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testingg/
+DEBUG 2019-06-17 14:38:32,619 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testingg
+DEBUG 2019-06-17 14:38:32,620 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testingg/
+DEBUG 2019-06-17 15:07:15,262 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1
+DEBUG 2019-06-17 15:08:24,730 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1
+DEBUG 2019-06-17 15:09:06,473 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1
+DEBUG 2019-06-17 15:09:32,246 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1
+DEBUG 2019-06-17 15:10:11,092 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1
+DEBUG 2019-06-17 15:11:42,795 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1
+DEBUG 2019-06-17 15:11:42,795 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test1/dummy
+DEBUG 2019-06-17 15:21:49,604 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test2
+DEBUG 2019-06-17 15:21:49,604 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test2/dummy
+DEBUG 2019-06-17 15:36:13,083 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test3
+DEBUG 2019-06-17 15:36:13,083 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/test3/dummy
+DEBUG 2019-06-17 15:40:01,910 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testing
+DEBUG 2019-06-17 15:40:01,910 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /folder/testing/dummy
+DEBUG 2019-06-17 15:41:14,976 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test
+DEBUG 2019-06-17 15:41:14,977 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test/dummy
+DEBUG 2019-06-17 15:43:33,746 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test3
+DEBUG 2019-06-17 15:43:33,747 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test3/dummy
+DEBUG 2019-06-17 15:47:20,963 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4
+DEBUG 2019-06-17 15:47:20,963 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4/dummy
+DEBUG 2019-06-17 15:50:45,496 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4
+DEBUG 2019-06-17 15:50:45,496 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4/dummy
+DEBUG 2019-06-17 15:52:53,609 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4
+DEBUG 2019-06-17 15:52:53,609 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4/dummy
+DEBUG 2019-06-17 15:54:27,094 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4
+DEBUG 2019-06-17 15:54:27,095 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4/
+DEBUG 2019-06-17 15:54:50,959 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4
+DEBUG 2019-06-17 15:54:50,959 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test4/
+DEBUG 2019-06-17 16:18:34,575 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test5
+DEBUG 2019-06-17 16:18:34,576 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test5/dummy
+DEBUG 2019-06-17 16:19:37,329 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:19:37,329 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:21:59,645 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:21:59,645 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:23:04,973 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:23:04,973 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:23:48,561 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:23:48,561 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:24:04,785 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:24:04,786 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:26:18,440 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:26:18,441 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:28:38,132 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6
+DEBUG 2019-06-17 16:28:38,132 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test6/dummy
+DEBUG 2019-06-17 16:28:55,804 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test7
+DEBUG 2019-06-17 16:28:55,805 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test7/dummy
+DEBUG 2019-06-17 16:32:24,027 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:32:24,028 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:33:29,520 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:33:29,520 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:36:33,997 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:36:33,997 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:38:23,349 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:38:23,349 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:39:15,227 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:39:15,228 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:40:49,209 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:40:49,210 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:43:12,098 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:43:12,098 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:43:30,894 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:43:30,894 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:44:44,627 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:44:44,628 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 16:45:14,338 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8
+DEBUG 2019-06-17 16:45:14,339 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./folder/test8/dummy
+DEBUG 2019-06-17 17:02:06,873 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./test8
+DEBUG 2019-06-17 17:02:06,874 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ ./test8/dummy
+DEBUG 2019-06-17 17:02:41,892 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test8
+DEBUG 2019-06-17 17:02:41,893 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test8/dummy
+DEBUG 2019-06-17 17:03:36,541 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test9
+DEBUG 2019-06-17 17:03:36,542 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test9/dummy
+DEBUG 2019-06-17 17:04:44,256 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test9
+DEBUG 2019-06-17 17:04:44,256 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test9/dummy
+DEBUG 2019-06-17 17:05:05,656 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test9
+DEBUG 2019-06-17 17:05:05,657 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test9/dummy
+DEBUG 2019-06-17 17:06:26,545 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test9
+DEBUG 2019-06-17 17:06:26,545 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test9/dummy
+DEBUG 2019-06-17 17:13:34,171 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test9
+DEBUG 2019-06-17 17:13:34,172 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test9/dummy
+DEBUG 2019-06-17 17:13:42,604 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test01
+DEBUG 2019-06-17 17:13:42,605 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test01/dummy
+DEBUG 2019-06-17 17:14:08,845 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test11
+DEBUG 2019-06-17 17:14:08,846 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test11/dummy
+DEBUG 2019-06-17 17:15:24,701 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test11
+DEBUG 2019-06-17 17:15:24,702 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ / /test11/dummy
+DEBUG 2019-06-17 17:15:43,825 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11
+DEBUG 2019-06-17 17:15:43,826 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11/dummy
+DEBUG 2019-06-17 17:16:08,975 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11
+DEBUG 2019-06-17 17:16:08,975 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11/dummy
+DEBUG 2019-06-17 17:16:27,720 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11
+DEBUG 2019-06-17 17:16:27,720 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11/dummy
+DEBUG 2019-06-17 17:17:26,835 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11
+DEBUG 2019-06-17 17:17:26,835 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11/dummy
+DEBUG 2019-06-17 17:20:10,804 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11
+DEBUG 2019-06-17 17:20:10,805 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test11/dummy
+DEBUG 2019-06-17 19:32:07,292 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1
+DEBUG 2019-06-17 19:32:07,292 STATE - Created destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1/dummy
+DEBUG 2019-06-17 19:34:21,616 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1
+DEBUG 2019-06-17 19:34:21,616 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1/dummy
+DEBUG 2019-06-17 19:34:54,900 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1
+DEBUG 2019-06-17 19:34:54,900 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1/dummy
+DEBUG 2019-06-17 19:36:04,293 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1
+DEBUG 2019-06-17 19:36:04,294 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1/dummy
+DEBUG 2019-06-17 19:40:15,969 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1
+DEBUG 2019-06-17 19:40:15,971 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1/dummy
+DEBUG 2019-06-17 19:41:38,555 ctx.workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1
+DEBUG 2019-06-17 19:41:38,556 STATE - destination workspace: /home/mankulka/development/linchpin/restylinchpin/restylinchpin/app/ /test1/dummy

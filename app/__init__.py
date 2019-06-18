@@ -83,18 +83,16 @@ def linchpin_fetch_workspace():
                 cmd.append("--web")
 
         if 'rootfolder' in data:
-            cmd.append("--root")
-            cmd.append(data['rootfolder'])
+            cmd.extend(("--root", data['rootfolder']))
 
         if repo is None and 'branch' in data:
-            cmd.append("--branch")
-            cmd.append(data['branch'])
+            cmd.extend(("--branch", data['branch']))
 
         # last item to be added in the array
         if 'url' in data:
             cmd.append(str(url))
         # Checking if workspace already exists
-        if os.path.exists(os.path.join(app.root_path, WORKING_DIR, name)):
+        if os.path.exists(os.path.join(app.root_path, WORKING_DIR + "/" + name)):
             return jsonify(status="workspace with the same name found try again by renaming")
         else:
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)

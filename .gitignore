@@ -6,3 +6,5 @@ venv/
 *.swp
 .cache
 .pytest_cache
+.pypirc
+*.log

@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, Response
 import subprocess
 import os
 import yaml
-
+from flask_swagger_ui import get_swaggerui_blueprint
 import shutil
 import json
 import logging
@@ -10,13 +10,32 @@ from logging.handlers import RotatingFileHandler
 
 app = Flask(__name__)
 
-# Reading directory path from config.json file
+# Reading directory path from config.yml file
 
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)
 
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
+
+with open('swagger.json', 'r') as f:
+    jsonData = json.load(f)
+
+WORKING_DIR = doc['working_path']
+LOGGER_FILE = doc['logger_file_name']
+
+
+SWAGGER_URL = '/api/docs'  # URL for exposing Swagger UI (without trailing '/')
+API_URL = 'https://api.myjson.com/bins/m95ah'  # Our API url (can of course be a local resource)
+
+# Call factory function to create our blueprint
+swaggerui_blueprint = get_swaggerui_blueprint(
+    SWAGGER_URL,  # Swagger UI static files will be mapped to '{SWAGGER_URL}/dist/'
+    API_URL,
+    config={  # Swagger UI config overrides
+        'app_name': "Test application"
+    }
+)
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
@@ -64,7 +83,6 @@ def linchpin_delete_workspace():
         app.logger.error(e)
         return jsonify(status=409, message=str(e))
 
-
 @app.route('/workspace/fetch', methods=['POST'])
 def linchpin_fetch_workspace():
     try:
@@ -107,11 +125,11 @@ def linchpin_fetch_workspace():
 def check_workspace_empty(name):
     return os.listdir(app.root_path + WORKING_DIR + name) == []
 
-
 if __name__ == "__main__":
     handler = RotatingFileHandler(LOGGER_FILE, maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)
     app.logger.addHandler(handler)
+    app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)
     app.run(host='0.0.0.0', debug=True)
 
 

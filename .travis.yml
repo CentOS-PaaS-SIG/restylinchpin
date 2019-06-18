@@ -10,3 +10,4 @@ before_script: cd app
 
 script:
   - python3 __init__.py || python __init__.py
+  - flake8 --exclude=\.eggs,tests,docs --max-line-length 80 .

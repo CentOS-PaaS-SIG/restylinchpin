@@ -49,7 +49,7 @@ def linchpin_init():
         else:
             output = subprocess.Popen(["linchpin", "-w " +
                                        WORKING_DIR + name +
-                                       "/",  "init"], stdout=subprocess.PIPE)
+                                       "/", "init"], stdout=subprocess.PIPE)
             return jsonify(name=data["name"],
                            status="Workspace created successfully",
                            Code=output.returncode)

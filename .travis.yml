@@ -7,4 +7,4 @@ install:
   - pip install -r requirements.txt
 
 script:
-  - python3 __init__.py || python __init__.py
+  - python3 app/__init__.py || python app/__init__.py

@@ -14,14 +14,12 @@ app = Flask(__name__)
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)
 
-WORKING_DIR = doc['working_path']
-LOGGER_FILE = doc['logger_file_name']
-
 with open('swagger.json', 'r') as f:
     jsonData = json.load(f)
 
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
+
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -39,7 +37,7 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
-def linchpin_init():
+def linchpin_init() -> Response:
     try:
         data = request.json     # Get request body
         name = data["name"]
@@ -59,7 +57,7 @@ def linchpin_init():
 
 # Route for listing all workspaces
 @app.route('/workspace/list', methods=['GET'])
-def linchpin_list_workspace():
+def linchpin_list_workspace() -> Response:
     try:
         workspace_array = []
         # path specifying location of working directory inside server
@@ -75,7 +73,7 @@ def linchpin_list_workspace():
 
 
 @app.route('/workspace/delete', methods=['POST'])
-def linchpin_delete_workspace():
+def linchpin_delete_workspace() -> Response:
     try:
         data = request.json  # Get request body
         name = data["name"]
@@ -92,7 +90,7 @@ def linchpin_delete_workspace():
 
 
 @app.route('/workspace/fetch', methods=['POST'])
-def linchpin_fetch_workspace():
+def linchpin_fetch_workspace() -> Response:
     try:
         data = request.json  # Get request body
         name = data['name']
@@ -135,7 +133,7 @@ def linchpin_fetch_workspace():
         return jsonify(status=409, message=str(e))
 
 
-def check_workspace_empty(name):
+def check_workspace_empty(name) -> bool:
     return os.listdir(app.root_path + WORKING_DIR + name) == []
 
 

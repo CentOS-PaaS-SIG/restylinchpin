@@ -7,6 +7,7 @@ import shutil
 import json
 import logging
 from logging.handlers import RotatingFileHandler
+from config import errors
 app = Flask(__name__)
 
 # Reading directory path from config.yml file

@@ -14,9 +14,6 @@ app = Flask(__name__)
 with open('config.yml', 'r') as f:
     doc = yaml.load(f)
 
-WORKING_DIR = doc['working_path']
-LOGGER_FILE = doc['logger_file_name']
-
 with open('swagger.json', 'r') as f:
     jsonData = json.load(f)
 

@@ -21,9 +21,9 @@ WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
 
 
-# URL for exposing Swagger UI (without trailing '/')
+# URL for exposing Swagger UI
 SWAGGER_URL = '/api/docs'
-# Our API url (can of course be a local resource)
+# Our API url wth swagger.json
 API_URL = 'https://api.myjson.com/bins/m95ah'
 
 # Call factory function to create our blueprint
@@ -35,9 +35,13 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     }
 )
 
-# Route for creating workspaces
+
 @app.route('/workspace/create', methods=['POST'])
 def linchpin_init() -> Response:
+    """
+        POST request route for creating workspaces.
+        Returns a response with created workspace name, status and code
+    """
     try:
         data = request.json     # Get request body
         name = data["name"]
@@ -58,6 +62,11 @@ def linchpin_init() -> Response:
 # Route for listing all workspaces
 @app.route('/workspace/list', methods=['GET'])
 def linchpin_list_workspace() -> Response:
+    """
+        GET request route for listing workspaces.
+        Returns a response with a list of workspaces
+        from the destination set in config.py
+    """
     try:
         workspace_array = []
         # path specifying location of working directory inside server
@@ -74,6 +83,10 @@ def linchpin_list_workspace() -> Response:
 
 @app.route('/workspace/delete', methods=['POST'])
 def linchpin_delete_workspace() -> Response:
+    """
+        POST request route for deleting workspaces.
+        Returns a response with deleted workspace name and status
+    """
     try:
         data = request.json  # Get request body
         name = data["name"]
@@ -91,6 +104,10 @@ def linchpin_delete_workspace() -> Response:
 
 @app.route('/workspace/fetch', methods=['POST'])
 def linchpin_fetch_workspace() -> Response:
+    """
+        POST request route for fetching workspaces from a remote URL
+        Returns a response with fetched workspace name,status and code
+    """
     try:
         data = request.json  # Get request body
         name = data['name']
@@ -134,6 +151,10 @@ def linchpin_fetch_workspace() -> Response:
 
 
 def check_workspace_empty(name) -> bool:
+    """
+        Verifies if a workspace fetched/created is empty
+        Returns a boolean value
+    """
     return os.listdir(app.root_path + WORKING_DIR + name) == []
 
 

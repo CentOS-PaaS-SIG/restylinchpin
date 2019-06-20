@@ -56,9 +56,12 @@ def linchpin_init() -> Response:
             return jsonify(name=data["name"],
                            status=response.CREATE_SUCCESS,
                            Code=output.returncode)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_NAME)
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=409, code=output.returncode)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e),
+                       code=output.returncode)
 
 # Route for listing all workspaces
 @app.route('/workspace/list', methods=['GET'])
@@ -79,7 +82,7 @@ def linchpin_list_workspace() -> Response:
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=409, message=str(e))
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/workspace/delete', methods=['POST'])
@@ -98,9 +101,11 @@ def linchpin_delete_workspace() -> Response:
                 return jsonify(name=name,
                                status=response.DELETE_SUCCESS)
         return jsonify(status=response.NOT_FOUND)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_NAME)
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=409, message=str(e))
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/workspace/fetch', methods=['POST'])
@@ -143,9 +148,11 @@ def linchpin_fetch_workspace() -> Response:
                 return jsonify(status=response.EMPTY_WORKSPACE)
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
                            code=output.returncode)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_PARAMS)
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=409, message=str(e))
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 def check_workspace_empty(name) -> bool:

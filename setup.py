@@ -30,6 +30,7 @@ setup(
     url="http://restylinchpin.readthedocs.io/",
 
     setup_requires=setup_required,
+    tests_require=["flake8"],
 
     #
     # license="LICENSE",

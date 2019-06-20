@@ -7,7 +7,7 @@ import shutil
 import json
 import logging
 from logging.handlers import RotatingFileHandler
-from config import errors
+from config import errors, response
 app = Flask(__name__)
 
 # Reading directory path from config.yml file
@@ -24,7 +24,7 @@ LOGGER_FILE = doc['logger_file_name']
 
 # URL for exposing Swagger UI
 SWAGGER_URL = '/api/docs'
-# Our API url wth swagger.json
+# Our API url consisting swagger.json
 API_URL = 'https://api.myjson.com/bins/m95ah'
 
 # Call factory function to create our blueprint

@@ -21,7 +21,7 @@ A user can currently make use of following supported features:
 LinchPin is a simple cloud orchestration tool. Its intended purpose is managing cloud resources across multiple infrastructures. These resources can be provisioned, decommissioned, and configured all using declarative data and a simple command-line interface.
 
 Refer to Linchpin Repository for detailed information: 
-<a>https://github.com/CentOS-PaaS-SIG/restylinchpin/issues</a>
+<a>https://github.com/CentOS-PaaS-SIG/linchpin</a>
 
 # Deployment
 restylinchpin will be deployed and available on Openshift.

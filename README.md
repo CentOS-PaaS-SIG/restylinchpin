@@ -27,5 +27,5 @@ Refer to Linchpin Repository for detailed information:
 restylinchpin will be deployed and available on Openshift.
 
 # Documenation (In progress)
-Swagger
+Swagger <br>
 ReadTheDocs

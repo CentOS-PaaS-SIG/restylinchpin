@@ -25,7 +25,7 @@ Refer to Linchpin Repository for detailed information:
 
 # Deployment
 restylinchpin will be deployed and available on Openshift.<br>
-Start using restylicnhpin using pypi: <a href="https://pypi.org/project/restylinchpin/">pip install restylinchpin</a>
+Start using restylicnhpin with pypi: <a href="https://pypi.org/project/restylinchpin/">pip install restylinchpin</a>
 
 # Documenation (In progress)
 Swagger <br>

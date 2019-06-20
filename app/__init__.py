@@ -48,7 +48,7 @@ def linchpin_init() -> Response:
         name = data["name"]
         # Checking if workspace already exists
         if os.path.exists(WORKING_DIR + "/" + name):
-            return jsonify(status="Workspace already exists")
+            return jsonify(status=response.DUPLICATE_WORKSPACE)
         else:
             output = subprocess.Popen(["linchpin", "-w " +
                                        WORKING_DIR + name +

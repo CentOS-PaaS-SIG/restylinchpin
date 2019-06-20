@@ -24,7 +24,7 @@ Refer to Linchpin Repository for detailed information:
 <a>https://github.com/CentOS-PaaS-SIG/linchpin</a>
 
 # Deployment
-restylinchpin will be deployed and available on Openshift.
+restylinchpin will be deployed and available on Openshift.<br>
 Start using restylicnhpin using pypi: <a href="https://pypi.org/project/restylinchpin/">pip install restylinchpin</a>
 
 # Documenation (In progress)

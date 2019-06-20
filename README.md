@@ -4,7 +4,7 @@ flask based RESTful API wrapper built around project linchpin
 # Table Of Contents
 - [Overview](#overview)
 - [Deployment](#deployment)
-- [Documentation (In Progress)](#documentation)
+- [Documenation (In progress)](#documentation)
 
 # Overview
 HTTP RESTful API.

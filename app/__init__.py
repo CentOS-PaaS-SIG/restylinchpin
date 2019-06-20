@@ -54,7 +54,7 @@ def linchpin_init() -> Response:
                                        WORKING_DIR + name +
                                        "/", "init"], stdout=subprocess.PIPE)
             return jsonify(name=data["name"],
-                           status="Workspace created successfully",
+                           status=response.CREATE_SUCCESS,
                            Code=output.returncode)
     except Exception as e:
         app.logger.error(e)
@@ -96,8 +96,8 @@ def linchpin_delete_workspace() -> Response:
             if x == name:
                 shutil.rmtree(name)
                 return jsonify(name=name,
-                               status="Workspace deleted successfully")
-        return jsonify(status="Workspace " + name + " not found")
+                               status=response.DELETE_SUCCESS)
+        return jsonify(status=response.NOT_FOUND)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=409, message=str(e))
@@ -136,15 +136,12 @@ def linchpin_fetch_workspace() -> Response:
         # Checking if workspace already exists
         if os.path.exists(os.path.join(app.root_path,
                                        WORKING_DIR + "/" + name)):
-            return jsonify(status="workspace with the same "
-                                  "name found try again by renaming")
+            return jsonify(status=response.DUPLICATE_WORKSPACE)
         else:
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             if check_workspace_empty(name):
-                return jsonify(message="Only public repositories can be "
-                                       "used as fetch URl's")
-            return jsonify(name=data["name"], status="Workspace created "
-                                                     "successfully",
+                return jsonify(status=response.EMPTY_WORKSPACE)
+            return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
                            code=output.returncode)
     except Exception as e:
         app.logger.error(e)

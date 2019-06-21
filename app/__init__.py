@@ -41,7 +41,8 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 def linchpin_init() -> Response:
     """
         POST request route for creating workspaces.
-        Returns a response with created workspace name, status and code
+        RequestBody: {"name": "workspacename"}
+        :return : response with created workspace name, status and code
     """
     try:
         data = request.json     # Get request body
@@ -55,7 +56,7 @@ def linchpin_init() -> Response:
                                        "/", "init"], stdout=subprocess.PIPE)
             return jsonify(name=data["name"],
                            status=response.CREATE_SUCCESS,
-                           Code=output.returncode)
+                           Code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_NAME)
     except Exception as e:
@@ -68,7 +69,7 @@ def linchpin_init() -> Response:
 def linchpin_list_workspace() -> Response:
     """
         GET request route for listing workspaces.
-        Returns a response with a list of workspaces
+        :return : response with a list of workspaces
         from the destination set in config.py
     """
     try:
@@ -89,7 +90,8 @@ def linchpin_list_workspace() -> Response:
 def linchpin_delete_workspace() -> Response:
     """
         POST request route for deleting workspaces.
-        Returns a response with deleted workspace name and status
+        RequestBody: {"name": "workspacename"}
+        :return : response with deleted workspace name and status
     """
     try:
         data = request.json  # Get request body
@@ -99,7 +101,7 @@ def linchpin_delete_workspace() -> Response:
             if x == name:
                 shutil.rmtree(name)
                 return jsonify(name=name,
-                               status=response.DELETE_SUCCESS)
+                               status=response.DELETE_SUCCESS, mimetype='application/json')
         return jsonify(status=response.NOT_FOUND)
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_NAME)
@@ -112,7 +114,8 @@ def linchpin_delete_workspace() -> Response:
 def linchpin_fetch_workspace() -> Response:
     """
         POST request route for fetching workspaces from a remote URL
-        Returns a response with fetched workspace name,status and code
+        RequestBody: {"name": "workspacename", "url": "www.github.com/someurl", "rootfolder":"/path/to/folder"}
+        :return : response with fetched workspace name,status and code
     """
     try:
         data = request.json  # Get request body
@@ -147,7 +150,7 @@ def linchpin_fetch_workspace() -> Response:
             if check_workspace_empty(name):
                 return jsonify(status=response.EMPTY_WORKSPACE)
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
-                           code=output.returncode)
+                           code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_PARAMS)
     except Exception as e:
@@ -158,7 +161,8 @@ def linchpin_fetch_workspace() -> Response:
 def check_workspace_empty(name) -> bool:
     """
         Verifies if a workspace fetched/created is empty
-        Returns a boolean value
+        :param name: name of the workspace to be verified
+        :return a boolean value True or False
     """
     return os.listdir(app.root_path + WORKING_DIR + name) == []
 

@@ -42,7 +42,8 @@ def linchpin_init() -> Response:
     """
         POST request route for creating workspaces.
         RequestBody: {"name": "workspacename"}
-        :return : response with created workspace name, status and code
+        :return : response with created workspace name,
+                  status and code
     """
     try:
         data = request.json     # Get request body
@@ -58,7 +59,8 @@ def linchpin_init() -> Response:
                            status=response.CREATE_SUCCESS,
                            Code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_NAME)
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_NAME)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e),
@@ -101,10 +103,12 @@ def linchpin_delete_workspace() -> Response:
             if x == name:
                 shutil.rmtree(name)
                 return jsonify(name=name,
-                               status=response.DELETE_SUCCESS, mimetype='application/json')
+                               status=response.DELETE_SUCCESS,
+                               mimetype='application/json')
         return jsonify(status=response.NOT_FOUND)
     except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_NAME)
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_NAME)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
@@ -114,7 +118,8 @@ def linchpin_delete_workspace() -> Response:
 def linchpin_fetch_workspace() -> Response:
     """
         POST request route for fetching workspaces from a remote URL
-        RequestBody: {"name": "workspacename", "url": "www.github.com/someurl", "rootfolder":"/path/to/folder"}
+        RequestBody: {"name": "workspacename", "url": "www.github.com/someurl",
+        "rootfolder":"/path/to/folder"}
         :return : response with fetched workspace name,status and code
     """
     try:
@@ -152,7 +157,8 @@ def linchpin_fetch_workspace() -> Response:
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
                            code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS, message=errors.KEY_ERROR_PARAMS)
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_PARAMS)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))

@@ -7,7 +7,6 @@ import shutil
 import json
 import logging
 from logging.handlers import RotatingFileHandler
-from config import errors, response
 app = Flask(__name__)
 
 # Reading directory path from config.yml file
@@ -21,10 +20,9 @@ with open('swagger.json', 'r') as f:
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
 
-
-# URL for exposing Swagger UI
+# URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
-# Our API url consisting swagger.json
+# Our API url (can of course be a local resource)
 API_URL = 'https://api.myjson.com/bins/m95ah'
 
 # Call factory function to create our blueprint
@@ -36,44 +34,29 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     }
 )
 
-
+# Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
-def linchpin_init() -> Response:
-    """
-        POST request route for creating workspaces.
-        RequestBody: {"name": "workspacename"}
-        :return : response with created workspace name,
-                  status and code
-    """
+def linchpin_init():
     try:
         data = request.json     # Get request body
         name = data["name"]
         # Checking if workspace already exists
         if os.path.exists(WORKING_DIR + "/" + name):
-            return jsonify(status=response.DUPLICATE_WORKSPACE)
+            return jsonify(status="Workspace already exists")
         else:
             output = subprocess.Popen(["linchpin", "-w " +
                                        WORKING_DIR + name +
                                        "/", "init"], stdout=subprocess.PIPE)
             return jsonify(name=data["name"],
-                           status=response.CREATE_SUCCESS,
-                           Code=output.returncode, mimetype='application/json')
-    except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS,
-                       message=errors.KEY_ERROR_NAME)
+                           status="Workspace created successfully",
+                           Code=output.returncode)
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e),
-                       code=output.returncode)
+        return jsonify(status=409, code=output.returncode)
 
 # Route for listing all workspaces
 @app.route('/workspace/list', methods=['GET'])
-def linchpin_list_workspace() -> Response:
-    """
-        GET request route for listing workspaces.
-        :return : response with a list of workspaces
-        from the destination set in config.py
-    """
+def linchpin_list_workspace():
     try:
         workspace_array = []
         # path specifying location of working directory inside server
@@ -85,16 +68,11 @@ def linchpin_list_workspace() -> Response:
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+        return jsonify(status=409, message=str(e))
 
 
 @app.route('/workspace/delete', methods=['POST'])
-def linchpin_delete_workspace() -> Response:
-    """
-        POST request route for deleting workspaces.
-        RequestBody: {"name": "workspacename"}
-        :return : response with deleted workspace name and status
-    """
+def linchpin_delete_workspace():
     try:
         data = request.json  # Get request body
         name = data["name"]
@@ -103,25 +81,15 @@ def linchpin_delete_workspace() -> Response:
             if x == name:
                 shutil.rmtree(name)
                 return jsonify(name=name,
-                               status=response.DELETE_SUCCESS,
-                               mimetype='application/json')
-        return jsonify(status=response.NOT_FOUND)
-    except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS,
-                       message=errors.KEY_ERROR_NAME)
+                               status="Workspace deleted successfully")
+        return jsonify(status="Workspace " + name + " not found")
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+        return jsonify(status=409, message=str(e))
 
 
 @app.route('/workspace/fetch', methods=['POST'])
-def linchpin_fetch_workspace() -> Response:
-    """
-        POST request route for fetching workspaces from a remote URL
-        RequestBody: {"name": "workspacename", "url": "www.github.com/someurl",
-        "rootfolder":"/path/to/folder"}
-        :return : response with fetched workspace name,status and code
-    """
+def linchpin_fetch_workspace():
     try:
         data = request.json  # Get request body
         name = data['name']
@@ -149,27 +117,22 @@ def linchpin_fetch_workspace() -> Response:
         # Checking if workspace already exists
         if os.path.exists(os.path.join(app.root_path,
                                        WORKING_DIR + "/" + name)):
-            return jsonify(status=response.DUPLICATE_WORKSPACE)
+            return jsonify(status="workspace with the same "
+                                  "name found try again by renaming")
         else:
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             if check_workspace_empty(name):
-                return jsonify(status=response.EMPTY_WORKSPACE)
-            return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
-                           code=output.returncode, mimetype='application/json')
-    except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS,
-                       message=errors.KEY_ERROR_PARAMS)
+                return jsonify(message="Only public repositories can be "
+                                       "used as fetch URl's")
+            return jsonify(name=data["name"], status="Workspace created "
+                                                     "successfully",
+                           code=output.returncode)
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+        return jsonify(status=409, message=str(e))
 
 
-def check_workspace_empty(name) -> bool:
-    """
-        Verifies if a workspace fetched/created is empty
-        :param name: name of the workspace to be verified
-        :return a boolean value True or False
-    """
+def check_workspace_empty(name):
     return os.listdir(app.root_path + WORKING_DIR + name) == []
 
 

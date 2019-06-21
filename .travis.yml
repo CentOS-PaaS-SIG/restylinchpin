@@ -15,17 +15,19 @@ deploy:
   provider: pypi
   user: "mansikulkarni96"
   password:
-    secure: "YPeYmhcF2iJX2Xe2sNjI9IE/6COx7TgQ/Ctnto+5e9BMP4Kr/
-    Ym5kGJPt1JNw8rHOFoaUp+9oaAvNHjkKDt6fbIeLaJbsKQ6K3qgILPNKa
-    VuzsHw0E5atpMl18cIU2LbV3Q1fLrk3xvcZ3XwuZFb5NtL8mke2RAnRWSe
-    P55MonJSn8PawhF3IyzigOPUdxYshgAhr7EAfEsVcGHOwM4fk+huWfFV7KA
-    Joe5hfplodKf7UR/jcWdkinSZFS+YcXh50pZtAZAO9/MldGXWqAYddA76u4u
-    tHgBycmJ3emFArKYuO9uHfQ6T/dEgoJIRgOtBduXKXKhIhLLAASk/0sm+8oO7T
-    E21Rdm0MpsTxAok3jmT89VWczdiz/uJM6/ugqzmr9EIGIMM51pezzBh7eXQLe2
-    cZVTb5R0H5ZNQME4CTZ9WyKUnAoF9kraZ0H/6/yAkFvQ3Gwhr76dQEGVkNbHeec
-    eZcyTzNqwVp7AhFbcW8TDeg0gMg4cLN2MJ2mVmnPAw+Gv8XddjQhPtp/NfkTpI8W
-    HXRvuSkJzVb6+vOq8Zy/1JPbgUgnWAPQxNI9troFKGVGRz0d4VyWz/1n/kXwtmRjL
-    tvw/BLZRA0Lt2R/Rrs0uMT6i3z63Lq3GC6UgwPuqz1YnU1j5hKmIzaW4IWfIAA7Ts
-    e6rxAfHggunzDAag1K4="
+    secure: "CxQfIX2JkKpB0XgqbmiCzjqwZREdTvas5ymUc1E9+l
+    //X7Uq5dRnbMtkRpbJLXhjdTRPzIFxadGMpGnILWVeAphqfgVkX
+    yD+FCSJehSS0A1ECL3YrE/wJZjYsDJQVq8vedAtdiWrtcALXrM3
+    zIMTs2XTuRO2VGaQW0F8Q4+IhPhCnGGdlwOCanLtWeycofpLP1rj
+    t7jnApX4GiaCKVQFhZx+GErTQ1nX73jasQ7r2zZAEEnx/PG6FrNt
+    JmPyDDYj050X+ST0aDtcm2g3oVE9DBzuijbmOBjUn/SYusG0jmre
+    GLlYW8HqXCqDq3pg6Hz0YRMqOPQYVjyFabaGFrWE6ngf+wLZr8dF
+    +EEEFNny/7APCeZ4ccCSNxDPZfVbf5UokJInWon//ejIxXmi1Gkh
+    UH6JCl3LNZtc2iyVcU95HeBWUzHY9c9Zfk6nSQhYTp2nchEQdGZV
+    Ig6nUvne9769OZ8qqpy2aHQqzVe0HPp7MsSlRjPRsbGmkGGi/1Un
+    Pl5L/msssBNbNQ8rOfKjTVrqzIZu3QgFJsgmXJ+4sscrIV4TSCYA
+    JfOBBWLhOWOvQqZKX7ZGnWAtGBuba9zhgvWgR15OqPcJ2cnZEXs6
+    qekTRZzkulgOyNDfXhW45K5gRzVq0M7XQth+WnFp/sH5cwowxXDl
+    MfgpaK34mHaCIZ1VWK8="
   on:
     tags: true

@@ -7,7 +7,10 @@ import shutil
 import json
 import logging
 from logging.handlers import RotatingFileHandler
+from tinydb import TinyDB, Query
+
 app = Flask(__name__)
+db = TinyDB('db.json')
 
 # Reading directory path from config.yml file
 
@@ -34,6 +37,20 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     }
 )
 
+path = os.path.normpath(app.root_path + WORKING_DIR + r' ')
+
+
+def db_operations(name):
+    count = len(db)
+    if count == 0:
+        identity = 1
+    else:
+        array = db.all()
+        dictionary = array[count-1]
+        identity = dictionary['id'] + 1
+    db.insert({'id': identity, 'name': name, 'wid': name+str(identity)})
+
+
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
 def linchpin_init():
@@ -41,12 +58,14 @@ def linchpin_init():
         data = request.json     # Get request body
         name = data["name"]
         # Checking if workspace already exists
-        if os.path.exists(WORKING_DIR + "/" + name):
+        # path = os.path.normpath(app.root_path + WORKING_DIR + r' ')
+        if os.path.exists(path + "/" + name):
             return jsonify(status="Workspace already exists")
         else:
             output = subprocess.Popen(["linchpin", "-w " +
-                                       WORKING_DIR + name +
-                                       "/", "init"], stdout=subprocess.PIPE)
+                                       WORKING_DIR + name,
+                                       "init"], stdout=subprocess.PIPE)
+            db_operations(name)
             return jsonify(name=data["name"],
                            status="Workspace created successfully",
                            Code=output.returncode)
@@ -60,8 +79,8 @@ def linchpin_list_workspace():
     try:
         workspace_array = []
         # path specifying location of working directory inside server
-        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
-            if os.path.isdir(x):
+        for x in os.listdir(path):
+            if os.path.isdir(path + "/" + x):
                 workspace_dict = {'name ': x}
                 workspace_array.append(workspace_dict)
         return Response(json.dumps(workspace_array), status=200,
@@ -76,10 +95,13 @@ def linchpin_delete_workspace():
     try:
         data = request.json  # Get request body
         name = data["name"]
+        workspace = Query()
         # path specifying location of working directory inside server
-        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
+        # path1 = os.path.normpath(app.root_path + WORKING_DIR + r' ')
+        for x in os.listdir(path):
             if x == name:
-                shutil.rmtree(name)
+                shutil.rmtree(path + "/" + name)
+                db.remove(workspace.name == name)
                 return jsonify(name=name,
                                status="Workspace deleted successfully")
         return jsonify(status="Workspace " + name + " not found")
@@ -115,8 +137,7 @@ def linchpin_fetch_workspace():
         if 'url' in data:
             cmd.append(str(url))
         # Checking if workspace already exists
-        if os.path.exists(os.path.join(app.root_path,
-                                       WORKING_DIR + "/" + name)):
+        if os.path.exists(path + "/" + name):
             return jsonify(status="workspace with the same "
                                   "name found try again by renaming")
         else:
@@ -124,6 +145,7 @@ def linchpin_fetch_workspace():
             if check_workspace_empty(name):
                 return jsonify(message="Only public repositories can be "
                                        "used as fetch URl's")
+            db_operations(name)
             return jsonify(name=data["name"], status="Workspace created "
                                                      "successfully",
                            code=output.returncode)

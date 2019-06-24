@@ -10,21 +10,3 @@ before_script: cd app
 
 script:
   - flake8 --exclude=\.eggs,tests,docs --ignore=E124,E303,W504 --max-line-length 80 .
-
-deploy:
-  provider: pypi
-  user: "mansikulkarni"
-  password:
-    secure: "kQ4LWmcIw+QGr/pJtOkC/ne5aQTfEbuQHXHmDV+o9D7WksMySz/3P+t/
-    yF6Gzy6HZ5aEJehao7MQU3edqUCuvlTC4YME2NlY/MDwzr8/6o/GeOhYPFS3rU5Ol
-    qNdPbBb8ryicjHpVSmq7tR3LHUq8TD08rSYp54GvnNs7xpjAbJ+HFj3vDBETH4JWP
-    IZmqYQGwgv0iSYzXkf/LbILv98eIaHnSsXCz8qj0+VEDpdLo9D9MyPuP3h/nuIYWO
-    UzdUbvGTzbJ3jrjBbV7waN9sH7JTEkqZDwveg1QWzkqBKxn+dZKjqvB+NmJgHkDpn
-    sP07YX7EVcg+fj+LsJOC/5jIevJETax7XBo2jjwwan3A5tr0MlzRPggmbyDrEbvqML
-    j7dvobBqicSSkgNKW6UbTbYnp284B+In6ICu0Afcu5zQuO/3vqCHnrQ764i7Blk6qf
-    yG95OdgXhrjagdD5FBN/G/JKd2wUdDzSyKmKCZ0F60xkfLgyaUrCw8YauIKP9iljCF
-    6zrC8TjnIouQ9khaWLN6ulBkbsexnSrHP801APPa9mXwzRyB6AACUl7NpG3YCEuHN/
-    wVTlcPNxY5HS/mssjaColSuhubTAsflkKjN6Cdqdj/2+4qXTwgOCu427wirnSpyoiMN
-    P4y9CBs+e8w9JSe6m8/jDvvPREi/lnQojgts="
-  on:
-    tags: true

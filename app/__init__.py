@@ -37,8 +37,8 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     }
 )
 
-path = os.path.normpath(app.root_path + WORKING_DIR + r' ')
-
+# path navigating to current workspace directory
+WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
@@ -53,7 +53,7 @@ def linchpin_init() -> Response:
         data = request.json     # Get request body
         name = data["name"]
         # Checking if workspace already exists
-        if os.path.exists(path + "/" + name):
+        if os.path.exists(WORKING_PATH + "/" + name):
             return jsonify(status=response.DUPLICATE_WORKSPACE)
         else:
             output = subprocess.Popen(["linchpin", "-w " +
@@ -83,8 +83,8 @@ def linchpin_list_workspace() -> Response:
     try:
         workspace_array = []
         # path specifying location of working directory inside server
-        for x in os.listdir(path):
-            if os.path.isdir(path + "/" + x):
+        for x in os.listdir(WORKING_PATH):
+            if os.path.isdir(WORKING_PATH + "/" + x):
                 workspace_dict = {'name ': x}
                 workspace_array.append(workspace_dict)
         return Response(json.dumps(workspace_array), status=200,
@@ -105,9 +105,9 @@ def linchpin_delete_workspace() -> Response:
         data = request.json  # Get request body
         name = data["name"]
         # path specifying location of working directory inside server
-        for x in os.listdir(path):
+        for x in os.listdir(WORKING_PATH):
             if x == name:
-                shutil.rmtree(path + "/" + name)
+                shutil.rmtree(WORKING_PATH + "/" + name)
                 dbConn.db_remove(name)
                 return jsonify(name=name,
                                status=response.DELETE_SUCCESS,
@@ -135,7 +135,7 @@ def linchpin_fetch_workspace() -> Response:
         url = data['url']
         repo = None
         # initial list
-        cmd = ["linchpin", "-w " + WORKING_DIR + name + "/", "fetch"]
+        cmd = ["linchpin", "-w " + WORKING_DIR + name, "fetch"]
 
         # Check for repoType field in request,
         # Only true if it is set to web
@@ -154,10 +154,11 @@ def linchpin_fetch_workspace() -> Response:
         if 'url' in data:
             cmd.append(str(url))
         # Checking if workspace already exists
-        if os.path.exists(path + "/" + name):
+        if os.path.exists(WORKING_PATH + "/" + name):
             return jsonify(status=response.DUPLICATE_WORKSPACE)
         else:
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output.communicate()
             if check_workspace_empty(name):
                 return jsonify(status=response.EMPTY_WORKSPACE)
             dbConn.db_insert(name)
@@ -177,7 +178,7 @@ def check_workspace_empty(name) -> bool:
         :param name: name of the workspace to be verified
         :return a boolean value True or False
     """
-    return os.listdir(path + "/" + name) == []
+    return os.listdir(WORKING_PATH + "/" + name) == []
 
 
 if __name__ == "__main__":

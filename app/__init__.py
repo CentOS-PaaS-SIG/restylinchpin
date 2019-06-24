@@ -1,3 +1,5 @@
+from typing import List, Any, Union
+
 from flask import Flask, jsonify, request, Response
 import subprocess
 import os
@@ -121,6 +123,37 @@ def linchpin_delete_workspace() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
+def create_fetch_cmd(data) -> List[str]:
+    """
+        Creates a list to feed the subprocess in fetch API
+        :param data: JSON data from POST requestBody
+        :return a list for the subprocess to run
+    """
+    name = data['name']
+    url = data['url']
+    repo = None
+    # initial list
+    cmd = ["linchpin", "-w " + WORKING_DIR + name, "fetch"]
+
+    # Check for repoType field in request,
+    # Only true if it is set to web
+    if 'repoType' in data:
+        if data['repoType'] == 'web':
+            repo = 'web'
+            cmd.append("--web")
+
+    if 'rootfolder' in data:
+        cmd.extend(("--root", data['rootfolder']))
+
+    if repo is None and 'branch' in data:
+        cmd.extend(("--branch", data['branch']))
+
+    # last item to be added in the array
+    if 'url' in data:
+        cmd.append(str(url))
+    return cmd
+
+
 @app.route('/workspace/fetch', methods=['POST'])
 def linchpin_fetch_workspace() -> Response:
     """
@@ -132,27 +165,7 @@ def linchpin_fetch_workspace() -> Response:
     try:
         data = request.json  # Get request body
         name = data['name']
-        url = data['url']
-        repo = None
-        # initial list
-        cmd = ["linchpin", "-w " + WORKING_DIR + name, "fetch"]
-
-        # Check for repoType field in request,
-        # Only true if it is set to web
-        if 'repoType' in data:
-            if data['repoType'] == 'web':
-                repo = 'web'
-                cmd.append("--web")
-
-        if 'rootfolder' in data:
-            cmd.extend(("--root", data['rootfolder']))
-
-        if repo is None and 'branch' in data:
-            cmd.extend(("--branch", data['branch']))
-
-        # last item to be added in the array
-        if 'url' in data:
-            cmd.append(str(url))
+        cmd = create_fetch_cmd(data)
         # Checking if workspace already exists
         if os.path.exists(WORKING_PATH + "/" + name):
             return jsonify(status=response.DUPLICATE_WORKSPACE)

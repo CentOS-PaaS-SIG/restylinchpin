@@ -12,9 +12,9 @@ def db_insert(name) -> None:
     if count == 0:
         identity = 1
     else:
-        array = db.all()
-        dictionary = array[count-1]
-        identity = dictionary['id'] + 1
+        db_list = db.all()
+        db_dict = db_list[count-1]
+        identity = db_dict['id'] + 1
     db.insert({'id': identity, 'name': name, 'wid': name+str(identity)})
 
 

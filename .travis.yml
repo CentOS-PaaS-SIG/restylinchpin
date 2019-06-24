@@ -27,4 +27,4 @@ deploy:
     wVTlcPNxY5HS/mssjaColSuhubTAsflkKjN6Cdqdj/2+4qXTwgOCu427wirnSpyoiMN
     P4y9CBs+e8w9JSe6m8/jDvvPREi/lnQojgts="
   on:
-tags: true
+  tags: true

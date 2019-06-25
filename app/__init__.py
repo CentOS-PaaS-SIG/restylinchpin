@@ -7,6 +7,8 @@ from flask_swagger_ui import get_swaggerui_blueprint
 import shutil
 import json
 import logging
+import re
+import uuid
 from logging.handlers import RotatingFileHandler
 from dal import dbConn
 from config import errors, response
@@ -53,24 +55,26 @@ def linchpin_init() -> Response:
     try:
         data = request.json     # Get request body
         name = data["name"]
-        # Checking if workspace already exists
-        if os.path.exists(WORKING_PATH + "/" + name):
-            return jsonify(status=response.DUPLICATE_WORKSPACE)
+        if not re.match("^[a-zA-Z0-9]*$", name):
+            print("matched")
+            return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
         else:
+            # Checking if workspace already exists
+            identity = uuid.uuid4()
+            dbConn.db_insert(identity, name)
+            appended_name = str(identity) + "_" + name
             output = subprocess.Popen(["linchpin", "-w " +
-                                       WORKING_DIR + name +
-                                       "/", "init"], stdout=subprocess.PIPE)
-            dbConn.db_insert(name)
-            return jsonify(name=data["name"],
-                           status=response.CREATE_SUCCESS,
-                           Code=output.returncode, mimetype='application/json')
+                                      WORKING_DIR + appended_name +
+                                      "/", "init"], stdout=subprocess.PIPE)
+
+            return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
+                        Code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_NAME)
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e),
-                       code=output.returncode)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 # Route for listing all workspaces

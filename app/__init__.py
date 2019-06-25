@@ -66,7 +66,7 @@ def linchpin_init() -> Response:
             output = subprocess.Popen(["linchpin", "-w " +
                                       WORKING_DIR + appended_name +
                                       "/", "init"], stdout=subprocess.PIPE)
-            return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
+            return jsonify(name=data["name"], id=identity, status=response.CREATE_SUCCESS,
                            Code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
@@ -182,7 +182,8 @@ def linchpin_fetch_workspace() -> Response:
             if check_workspace_empty(appended_name):
                 return jsonify(status=response.EMPTY_WORKSPACE)
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
-                           code=output.returncode, mimetype='application/json')
+                           id=identity, code=output.returncode,
+                           mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_PARAMS)

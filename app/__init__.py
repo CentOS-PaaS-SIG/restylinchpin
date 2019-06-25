@@ -61,14 +61,13 @@ def linchpin_init() -> Response:
         else:
             # Checking if workspace already exists
             identity = uuid.uuid4()
-            dbConn.db_insert(identity, name)
             appended_name = str(identity) + "_" + name
+            dbConn.db_insert(identity, appended_name)
             output = subprocess.Popen(["linchpin", "-w " +
                                       WORKING_DIR + appended_name +
                                       "/", "init"], stdout=subprocess.PIPE)
-
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
-                        Code=output.returncode, mimetype='application/json')
+                           Code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_NAME)
@@ -126,17 +125,19 @@ def linchpin_delete_workspace() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-def create_fetch_cmd(data) -> List[str]:
+def create_fetch_cmd(data, identity) -> List[str]:
     """
         Creates a list to feed the subprocess in fetch API
         :param data: JSON data from POST requestBody
+        :param identity: unique uuid assigned to the workspace
         :return a list for the subprocess to run
     """
     name = data['name']
     url = data['url']
     repo = None
+    appended_name = str(identity) + "_" + name
     # initial list
-    cmd = ["linchpin", "-w " + WORKING_DIR + name, "fetch"]
+    cmd = ["linchpin", "-w " + WORKING_DIR + appended_name, "fetch"]
 
     # Check for repoType field in request,
     # Only true if it is set to web
@@ -168,16 +169,18 @@ def linchpin_fetch_workspace() -> Response:
     try:
         data = request.json  # Get request body
         name = data['name']
-        cmd = create_fetch_cmd(data)
+        identity = uuid.uuid4()
+        cmd = create_fetch_cmd(data, identity)
+        appended_name = str(identity) + "_" + name
         # Checking if workspace already exists
-        if os.path.exists(WORKING_PATH + "/" + name):
-            return jsonify(status=response.DUPLICATE_WORKSPACE)
+        if not re.match("^[a-zA-Z0-9]*$", name):
+            return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
         else:
+            dbConn.db_insert(identity, appended_name)
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output.communicate()
-            if check_workspace_empty(name):
+            if check_workspace_empty(appended_name):
                 return jsonify(status=response.EMPTY_WORKSPACE)
-            dbConn.db_insert(name)
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
                            code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):

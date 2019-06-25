@@ -9,7 +9,7 @@ def db_insert(identity, name):
         :param name: name of the workspace to be inserted in db
         :param identity: unique uuid assigned to the workspace
     """
-    db.insert({'id': str(identity), 'name': str(identity) + "_" + name})
+    db.insert({'id': str(identity), 'name': name})
     return identity
 
 

@@ -72,7 +72,7 @@ def linchpin_init() -> Response:
                 return jsonify(status=errors.ERROR_STATUS,
                                message=errors.INVALID_NAME)
             else:
-                # Checking if workspace already exists
+                # Checking if workspace name contains any special characters
                 output = subprocess.Popen(["linchpin", "-w " +
                                           WORKING_DIR + identity +
                                           "/", "init"], stdout=subprocess.PIPE)
@@ -107,13 +107,12 @@ def linchpin_list_workspace() -> Response:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
-
+# Route for listing workspaces filtered by name
 @app.route('/workspace/list/<name>', methods=['GET'])
 def linchpin_list_workspace_by_name(name) -> Response:
     """
-        GET request route for listing workspaces.
-        :return : response with a list of workspaces
-        from the destination set in config.py
+        GET request route for listing workspaces by name
+        :return : response with a list of workspaces filtered by name
     """
     try:
         workspace = get_connection().db_search(name)
@@ -124,12 +123,12 @@ def linchpin_list_workspace_by_name(name) -> Response:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
-
+# Route for deleting workspaces by Id
 @app.route('/workspace/delete/<identity>', methods=['DELETE'])
 def linchpin_delete_workspace(identity) -> Response:
     """
         DELETE request route for deleting workspaces.
-        RequestBody: {"name": "workspacename"}
+        :param : unique uuid_name assigned to the workspace
         :return : response with deleted workspace name and status
     """
     try:
@@ -154,7 +153,7 @@ def create_fetch_cmd(data, identity) -> List[str]:
     """
         Creates a list to feed the subprocess in fetch API
         :param data: JSON data from POST requestBody
-        :param identity: unique uuid assigned to the workspace
+        :param identity: unique uuid_name assigned to the workspace
         :return a list for the subprocess to run
     """
     url = data['url']

@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 
 
-class Tiny(ABC):
+class BaseDB(ABC):
 
     @abstractmethod
     def db_insert(self, identity, name, status):

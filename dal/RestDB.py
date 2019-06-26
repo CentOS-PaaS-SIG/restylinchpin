@@ -1,18 +1,18 @@
 from __future__ import absolute_import
 from tinydb import TinyDB, Query
-from dal.Tiny import Tiny
+from dal.BaseDB import BaseDB
 from typing import List
 from typing import Dict
 
 
-class RestDB(Tiny):
+class RestDB(BaseDB):
     db = TinyDB('db.json')
 
     def db_insert(self, identity, name, status) -> None:
         """
             Inserts a workspace with id, name and wid to the db
             :param name: name of the workspace to be inserted in db
-            :param identity: unique uuid assigned to the workspace
+            :param identity: unique uuid_name assigned to the workspace
             :param status: field specifying workspace creation inserted in db
         """
         self.db.insert({'id': str(identity), 'name': name, 'status': status})
@@ -20,7 +20,7 @@ class RestDB(Tiny):
     def db_remove(self, identity) -> None:
         """
             Removes a workspace record from db
-            :param identity: unique uuid assigned to the workspace
+            :param identity: unique uuid_name assigned to the workspace
         """
         workspace = Query()
         self.db.remove(workspace.id == identity)
@@ -28,7 +28,7 @@ class RestDB(Tiny):
     def db_update(self, identity, status) -> None:
         """
             Removes a workspace record from db
-            :param identity: unique uuid assigned to the workspace
+            :param identity: unique uuid_name assigned to the workspace
             :param status: field specifying workspace creation inserted in db
         """
         workspace = Query()

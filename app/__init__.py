@@ -196,7 +196,7 @@ def linchpin_fetch_workspace() -> Response:
             get_connection().db_insert(identity, name,
                                        response.WORKSPACE_REQUESTED)
             cmd = create_fetch_cmd(data, identity)
-            # Checking if workspace already exists
+            # Checking if workspace name contains special characters
             if not re.match("^[a-zA-Z0-9]*$", name):
                 get_connection().db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,

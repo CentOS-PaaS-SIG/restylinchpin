@@ -10,7 +10,7 @@ import logging
 import re
 import uuid
 from logging.handlers import RotatingFileHandler
-from dal import RestDB
+from dal.RestDB import RestDB
 from config import errors, response
 
 app = Flask(__name__)
@@ -43,6 +43,13 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 # path navigating to current workspace directory
 WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 
+
+def get_connection():
+    """
+        Method to create an object of subclass and create a connection
+    """
+    return RestDB()
+
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
 def linchpin_init() -> Response:
@@ -60,7 +67,7 @@ def linchpin_init() -> Response:
         else:
             # Checking if workspace already exists
             identity = str(uuid.uuid4()) + "_" + name
-            RestDB.db_insert(identity, name)
+            get_connection().db_insert(identity, name)
             output = subprocess.Popen(["linchpin", "-w " +
                                       WORKING_DIR + identity +
                                       "/", "init"], stdout=subprocess.PIPE)
@@ -83,7 +90,7 @@ def linchpin_list_workspace() -> Response:
         from the destination set in config.py
     """
     try:
-        workspace_array = RestDB.db_list_all()
+        workspace_array = get_connection().db_list_all()
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace_array), status=200,
                         mimetype='application/json')
@@ -100,7 +107,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
         from the destination set in config.py
     """
     try:
-        workspace = RestDB.db_search(name)
+        workspace = get_connection().db_search(name)
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace), status=200,
                         mimetype='application/json')
@@ -119,9 +126,9 @@ def linchpin_delete_workspace(identity) -> Response:
     try:
         # path specifying location of working directory inside server
         for x in os.listdir(WORKING_PATH):
-            if x.__contains__(identity):
+            if x == identity:
                 shutil.rmtree(WORKING_PATH + "/" + x)
-                RestDB.db_remove(identity)
+                get_connection().db_remove(identity)
                 return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
                                mimetype='application/json')
@@ -141,7 +148,6 @@ def create_fetch_cmd(data, identity) -> List[str]:
         :param identity: unique uuid assigned to the workspace
         :return a list for the subprocess to run
     """
-    name = data['name']
     url = data['url']
     repo = None
     # initial list
@@ -183,7 +189,7 @@ def linchpin_fetch_workspace() -> Response:
         if not re.match("^[a-zA-Z0-9]*$", name):
             return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
         else:
-            RestDB.db_insert(identity, name)
+            get_connection().db_insert(identity, name)
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output.communicate()
             if check_workspace_empty(identity):

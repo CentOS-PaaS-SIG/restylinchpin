@@ -210,8 +210,9 @@ def linchpin_fetch_workspace() -> Response:
                     return jsonify(status=response.EMPTY_WORKSPACE)
                 get_connection().db_update(identity,
                                            response.WORKSPACE_SUCCESS)
-                return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
-                               id=identity, code=output.returncode,
+                return jsonify(name=data["name"], id=identity,
+                               status=response.CREATE_SUCCESS,
+                               code=output.returncode,
                                mimetype='application/json')
         except Exception as e:
             get_connection().db_update(identity, response.WORKSPACE_FAILED)

@@ -67,7 +67,7 @@ def linchpin_init() -> Response:
             get_connection().db_insert(identity, name,
                                        response.WORKSPACE_REQUESTED)
             if not re.match("^[a-zA-Z0-9]*$", name):
-                get_connection().db_update(identity, "failed")
+                get_connection().db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,
                                message=errors.INVALID_NAME)
             else:
@@ -124,7 +124,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/workspace/delete/<identity>', methods=['POST'])
+@app.route('/workspace/delete/<identity>', methods=['DELETE'])
 def linchpin_delete_workspace(identity) -> Response:
     """
         POST request route for deleting workspaces.

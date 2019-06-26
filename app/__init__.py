@@ -64,7 +64,8 @@ def linchpin_init() -> Response:
         name = data["name"]
         identity = str(uuid.uuid4()) + "_" + name
         try:
-            get_connection().db_insert(identity, name, response.WORKSPACE_REQUESTED)
+            get_connection().db_insert(identity, name,
+                                       response.WORKSPACE_REQUESTED)
             if not re.match("^[a-zA-Z0-9]*$", name):
                 get_connection().db_update(identity, "failed")
                 return jsonify(status=errors.ERROR_STATUS,
@@ -77,7 +78,8 @@ def linchpin_init() -> Response:
                 get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
-                               Code=output.returncode, mimetype='application/json')
+                               Code=output.returncode,
+                               mimetype='application/json')
         except Exception as e:
             get_connection().db_update(identity, response.WORKSPACE_FAILED)
             app.logger.error(e)
@@ -191,7 +193,8 @@ def linchpin_fetch_workspace() -> Response:
         name = data['name']
         identity = str(uuid.uuid4()) + "_" + name
         try:
-            get_connection().db_insert(identity, name, response.WORKSPACE_REQUESTED)
+            get_connection().db_insert(identity, name,
+                                       response.WORKSPACE_REQUESTED)
             cmd = create_fetch_cmd(data, identity)
             # Checking if workspace already exists
             if not re.match("^[a-zA-Z0-9]*$", name):

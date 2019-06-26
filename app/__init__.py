@@ -127,7 +127,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
 @app.route('/workspace/delete/<identity>', methods=['DELETE'])
 def linchpin_delete_workspace(identity) -> Response:
     """
-        POST request route for deleting workspaces.
+        DELETE request route for deleting workspaces.
         RequestBody: {"name": "workspacename"}
         :return : response with deleted workspace name and status
     """

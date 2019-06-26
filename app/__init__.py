@@ -63,7 +63,8 @@ def linchpin_init() -> Response:
         data = request.json     # Get request body
         name = data["name"]
         if not re.match("^[a-zA-Z0-9]*$", name):
-            return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
+            return jsonify(status=errors.ERROR_STATUS,
+                           message=errors.INVALID_NAME)
         else:
             # Checking if workspace already exists
             identity = str(uuid.uuid4()) + "_" + name
@@ -71,7 +72,8 @@ def linchpin_init() -> Response:
             output = subprocess.Popen(["linchpin", "-w " +
                                       WORKING_DIR + identity +
                                       "/", "init"], stdout=subprocess.PIPE)
-            return jsonify(name=data["name"], id=identity, status=response.CREATE_SUCCESS,
+            return jsonify(name=data["name"], id=identity,
+                           status=response.CREATE_SUCCESS,
                            Code=output.returncode, mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
@@ -176,7 +178,7 @@ def create_fetch_cmd(data, identity) -> List[str]:
 def linchpin_fetch_workspace() -> Response:
     """
         POST request route for fetching workspaces from a remote URL
-        RequestBody: {"name": "workspacename", "url": "www.github.com/someurl",
+        RequestBody: {"name": "workspacename","url": "www.github.com/someurl",
         "rootfolder":"/path/to/folder"}
         :return : response with fetched workspace name,status and code
     """
@@ -187,7 +189,8 @@ def linchpin_fetch_workspace() -> Response:
         cmd = create_fetch_cmd(data, identity)
         # Checking if workspace already exists
         if not re.match("^[a-zA-Z0-9]*$", name):
-            return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
+            return jsonify(status=errors.ERROR_STATUS,
+                           message=errors.INVALID_NAME)
         else:
             get_connection().db_insert(identity, name)
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)

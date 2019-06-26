@@ -44,7 +44,6 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 
 
-
 def get_connection():
     """
         Method to create an object of subclass and create a connection

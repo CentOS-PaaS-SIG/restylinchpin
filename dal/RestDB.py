@@ -1,8 +1,7 @@
 from tinydb import TinyDB, Query
-import uuid
 db = TinyDB('db.json')
 
-
+class (TinyDB):
 def db_insert(identity, name):
     """
         Inserts a workspace with id, name and wid to the db
@@ -13,11 +12,25 @@ def db_insert(identity, name):
     return identity
 
 
-def db_remove(name) -> None:
+def db_remove(identity) -> None:
     """
         Removes a workspace record from db
-        :param name: name of the workspace to be removed from db
+        :param identity: unique uuid assigned to the workspace
     """
     workspace = Query()
-    db.remove(workspace.name == name)
+    db.remove(workspace.id == identity)
+
+
+def db_update(identity, status) -> None:
+    workspace = Query()
+    db.update({'status': status}, workspace.id == identity)
+
+
+def db_search(name):
+    workspace = Query()
+    return db.search(workspace.name == name)
+
+
+def db_list_all():
+    return db.all()
 

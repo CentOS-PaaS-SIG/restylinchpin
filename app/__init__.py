@@ -10,7 +10,7 @@ import logging
 import re
 import uuid
 from logging.handlers import RotatingFileHandler
-from dal import dbConn
+from dal import RestDB
 from config import errors, response
 
 app = Flask(__name__)
@@ -56,15 +56,13 @@ def linchpin_init() -> Response:
         data = request.json     # Get request body
         name = data["name"]
         if not re.match("^[a-zA-Z0-9]*$", name):
-            print("matched")
             return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
         else:
             # Checking if workspace already exists
-            identity = uuid.uuid4()
-            appended_name = str(identity) + "_" + name
-            dbConn.db_insert(identity, appended_name)
+            identity = str(uuid.uuid4()) + "_" + name
+            RestDB.db_insert(identity, name)
             output = subprocess.Popen(["linchpin", "-w " +
-                                      WORKING_DIR + appended_name +
+                                      WORKING_DIR + identity +
                                       "/", "init"], stdout=subprocess.PIPE)
             return jsonify(name=data["name"], id=identity, status=response.CREATE_SUCCESS,
                            Code=output.returncode, mimetype='application/json')
@@ -85,12 +83,8 @@ def linchpin_list_workspace() -> Response:
         from the destination set in config.py
     """
     try:
-        workspace_array = []
+        workspace_array = RestDB.db_list_all()
         # path specifying location of working directory inside server
-        for x in os.listdir(WORKING_PATH):
-            if os.path.isdir(WORKING_PATH + "/" + x):
-                workspace_dict = {'name ': x}
-                workspace_array.append(workspace_dict)
         return Response(json.dumps(workspace_array), status=200,
                         mimetype='application/json')
     except Exception as e:
@@ -98,22 +92,37 @@ def linchpin_list_workspace() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/workspace/delete', methods=['POST'])
-def linchpin_delete_workspace() -> Response:
+@app.route('/workspace/list/<name>', methods=['GET'])
+def linchpin_list_workspace_by_name(name) -> Response:
+    """
+        GET request route for listing workspaces.
+        :return : response with a list of workspaces
+        from the destination set in config.py
+    """
+    try:
+        workspace = RestDB.db_search(name)
+        # path specifying location of working directory inside server
+        return Response(json.dumps(workspace), status=200,
+                        mimetype='application/json')
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/workspace/delete/<identity>', methods=['POST'])
+def linchpin_delete_workspace(identity) -> Response:
     """
         POST request route for deleting workspaces.
         RequestBody: {"name": "workspacename"}
         :return : response with deleted workspace name and status
     """
     try:
-        data = request.json  # Get request body
-        name = data["name"]
         # path specifying location of working directory inside server
         for x in os.listdir(WORKING_PATH):
-            if x == name:
-                shutil.rmtree(WORKING_PATH + "/" + name)
-                dbConn.db_remove(name)
-                return jsonify(name=name,
+            if x.__contains__(identity):
+                shutil.rmtree(WORKING_PATH + "/" + x)
+                RestDB.db_remove(identity)
+                return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
                                mimetype='application/json')
         return jsonify(status=response.NOT_FOUND)
@@ -135,9 +144,8 @@ def create_fetch_cmd(data, identity) -> List[str]:
     name = data['name']
     url = data['url']
     repo = None
-    appended_name = str(identity) + "_" + name
     # initial list
-    cmd = ["linchpin", "-w " + WORKING_DIR + appended_name, "fetch"]
+    cmd = ["linchpin", "-w " + WORKING_DIR + identity, "fetch"]
 
     # Check for repoType field in request,
     # Only true if it is set to web
@@ -169,17 +177,16 @@ def linchpin_fetch_workspace() -> Response:
     try:
         data = request.json  # Get request body
         name = data['name']
-        identity = uuid.uuid4()
+        identity = str(uuid.uuid4()) + "_" + name
         cmd = create_fetch_cmd(data, identity)
-        appended_name = str(identity) + "_" + name
         # Checking if workspace already exists
         if not re.match("^[a-zA-Z0-9]*$", name):
             return jsonify(status=errors.ERROR_STATUS, message=errors.INVALID_NAME)
         else:
-            dbConn.db_insert(identity, appended_name)
+            RestDB.db_insert(identity, name)
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output.communicate()
-            if check_workspace_empty(appended_name):
+            if check_workspace_empty(identity):
                 return jsonify(status=response.EMPTY_WORKSPACE)
             return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
                            id=identity, code=output.returncode,

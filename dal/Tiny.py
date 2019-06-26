@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class Tiny(ABC):
 
     @abstractmethod
-    def db_insert(self, identity, name):
+    def db_insert(self, identity, name, status):
         return
 
     @abstractmethod

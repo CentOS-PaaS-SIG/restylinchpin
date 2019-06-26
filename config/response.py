@@ -5,3 +5,6 @@ DUPLICATE_WORKSPACE = "Workspace with same name found," \
                       "try again by renaming"
 EMPTY_WORKSPACE = "Only public repositories can be "\
                   "used as fetch URl's"
+WORKSPACE_SUCCESS = "CREATED"
+WORKSPACE_FAILED = "FAILED"
+WORKSPACE_REQUESTED = "REQUESTED"

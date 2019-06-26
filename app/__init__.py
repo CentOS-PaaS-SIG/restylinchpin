@@ -44,6 +44,7 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 
 
+
 def get_connection():
     """
         Method to create an object of subclass and create a connection
@@ -60,27 +61,31 @@ def linchpin_init() -> Response:
                   status and code
     """
     try:
-        data = request.json     # Get request body
+        data = request.json  # Get request body
         name = data["name"]
-        if not re.match("^[a-zA-Z0-9]*$", name):
-            return jsonify(status=errors.ERROR_STATUS,
-                           message=errors.INVALID_NAME)
-        else:
-            # Checking if workspace already exists
-            identity = str(uuid.uuid4()) + "_" + name
-            get_connection().db_insert(identity, name)
-            output = subprocess.Popen(["linchpin", "-w " +
-                                      WORKING_DIR + identity +
-                                      "/", "init"], stdout=subprocess.PIPE)
-            return jsonify(name=data["name"], id=identity,
-                           status=response.CREATE_SUCCESS,
-                           Code=output.returncode, mimetype='application/json')
+        identity = str(uuid.uuid4()) + "_" + name
+        try:
+            get_connection().db_insert(identity, name, response.WORKSPACE_REQUESTED)
+            if not re.match("^[a-zA-Z0-9]*$", name):
+                get_connection().db_update(identity, "failed")
+                return jsonify(status=errors.ERROR_STATUS,
+                               message=errors.INVALID_NAME)
+            else:
+                # Checking if workspace already exists
+                output = subprocess.Popen(["linchpin", "-w " +
+                                          WORKING_DIR + identity +
+                                          "/", "init"], stdout=subprocess.PIPE)
+                get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+                return jsonify(name=data["name"], id=identity,
+                               status=response.CREATE_SUCCESS,
+                               Code=output.returncode, mimetype='application/json')
+        except Exception as e:
+            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            app.logger.error(e)
+            return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_NAME)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 # Route for listing all workspaces
@@ -186,26 +191,31 @@ def linchpin_fetch_workspace() -> Response:
         data = request.json  # Get request body
         name = data['name']
         identity = str(uuid.uuid4()) + "_" + name
-        cmd = create_fetch_cmd(data, identity)
-        # Checking if workspace already exists
-        if not re.match("^[a-zA-Z0-9]*$", name):
-            return jsonify(status=errors.ERROR_STATUS,
-                           message=errors.INVALID_NAME)
-        else:
-            get_connection().db_insert(identity, name)
-            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            output.communicate()
-            if check_workspace_empty(identity):
-                return jsonify(status=response.EMPTY_WORKSPACE)
-            return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
-                           id=identity, code=output.returncode,
-                           mimetype='application/json')
+        try:
+            get_connection().db_insert(identity, name, response.WORKSPACE_REQUESTED)
+            cmd = create_fetch_cmd(data, identity)
+            # Checking if workspace already exists
+            if not re.match("^[a-zA-Z0-9]*$", name):
+                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                return jsonify(status=errors.ERROR_STATUS,
+                               message=errors.INVALID_NAME)
+            else:
+                output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                output.communicate()
+                if check_workspace_empty(identity):
+                    get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                    return jsonify(status=response.EMPTY_WORKSPACE)
+                get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+                return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
+                               id=identity, code=output.returncode,
+                               mimetype='application/json')
+        except Exception as e:
+            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            app.logger.error(e)
+            return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_PARAMS)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 def check_workspace_empty(name) -> bool:

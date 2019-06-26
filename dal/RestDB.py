@@ -6,13 +6,14 @@ from dal.Tiny import Tiny
 class RestDB(Tiny):
     db = TinyDB('db.json')
 
-    def db_insert(self, identity, name):
+    def db_insert(self, identity, name, status):
         """
             Inserts a workspace with id, name and wid to the db
             :param name: name of the workspace to be inserted in db
             :param identity: unique uuid assigned to the workspace
+            :param status: field specifying workspace creation inserted in db
         """
-        self.db.insert({'id': str(identity), 'name': name})
+        self.db.insert({'id': str(identity), 'name': name, 'status': status})
         return identity
 
     def db_remove(self, identity) -> None:

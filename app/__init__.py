@@ -205,9 +205,11 @@ def linchpin_fetch_workspace() -> Response:
                 output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
                 output.communicate()
                 if check_workspace_empty(identity):
-                    get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                    get_connection().db_update(identity,
+                                               response.WORKSPACE_FAILED)
                     return jsonify(status=response.EMPTY_WORKSPACE)
-                get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+                get_connection().db_update(identity,
+                                           response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], status=response.CREATE_SUCCESS,
                                id=identity, code=output.returncode,
                                mimetype='application/json')

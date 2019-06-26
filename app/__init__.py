@@ -58,7 +58,7 @@ def linchpin_init() -> Response:
         POST request route for creating workspaces.
         RequestBody: {"name": "workspacename"}
         :return : response with created workspace name,
-                  status and code
+                  id, status and code
     """
     try:
         data = request.json  # Get request body
@@ -129,7 +129,7 @@ def linchpin_delete_workspace(identity) -> Response:
     """
         DELETE request route for deleting workspaces.
         :param : unique uuid_name assigned to the workspace
-        :return : response with deleted workspace name and status
+        :return : response with deleted workspace id and status
     """
     try:
         # path specifying location of working directory inside server
@@ -186,7 +186,7 @@ def linchpin_fetch_workspace() -> Response:
         POST request route for fetching workspaces from a remote URL
         RequestBody: {"name": "workspacename","url": "www.github.com/someurl",
         "rootfolder":"/path/to/folder"}
-        :return : response with fetched workspace name,status and code
+        :return : response with fetched workspace name,id, status and code
     """
     try:
         data = request.json  # Get request body

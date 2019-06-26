@@ -47,6 +47,7 @@ WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 def get_connection():
     """
         Method to create an object of subclass and create a connection
+        :return an instantiated object for class RestDB
     """
     return RestDB()
 

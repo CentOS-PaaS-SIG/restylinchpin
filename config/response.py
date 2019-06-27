@@ -1,5 +1,6 @@
 CREATE_SUCCESS = "Workspace created successfully"
 DELETE_SUCCESS = "Workspace deleted successfully"
+PROVISION_SUCCESS= "Workspace provisioned successfully"
 NOT_FOUND = "Workspace does not exist"
 DUPLICATE_WORKSPACE = "Workspace with same name found," \
                       "try again by renaming"
@@ -8,3 +9,6 @@ EMPTY_WORKSPACE = "Only public repositories can be "\
 WORKSPACE_SUCCESS = "CREATED"
 WORKSPACE_FAILED = "FAILED"
 WORKSPACE_REQUESTED = "REQUESTED"
+PROVISION_STATUS_SUCCESS = "PROVISIONED"
+PROVISION_FAILED = "FAILED PROVISIONING"
+

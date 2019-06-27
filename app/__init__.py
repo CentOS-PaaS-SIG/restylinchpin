@@ -223,6 +223,41 @@ def linchpin_fetch_workspace() -> Response:
                        message=errors.KEY_ERROR_PARAMS)
 
 
+@app.route('/workspace/up', methods=['POST'])
+def linchpin_up() -> Response:
+    """
+        POST request route for provisioning workspaces/pinFile already created
+        RequestBody: {"name": "workspacename/pinfilename",
+                    provision_type: "workspace",
+                    --> value can be either pinfile or workspace
+                    }
+        :return : response with fetched workspace name,id, status,
+                  contents_of_latest_inventory_generated_in_inventoryfolder,
+                  contents_of_linchpin.latest_file_in_resource_folder
+    """
+    try:
+        data = request.json  # Get request body
+        identity = data['id']
+        # provision_type = data['provision_type']
+        cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "up"]
+        if not os.path.exists(WORKING_PATH + "/" + identity):
+            return jsonify(status=response.NOT_FOUND)
+        else:
+            if check_workspace_empty(identity):
+                return jsonify(status=response.EMPTY_WORKSPACE)
+            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output.communicate()
+            get_connection().db_update(identity,
+                                       response.PROVISION_STATUS_SUCCESS)
+            return jsonify(id=identity,
+                           status=response.PROVISION_SUCCESS,
+                           code=output.returncode,
+                           mimetype='application/json')
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
 def check_workspace_empty(name) -> bool:
     """
         Verifies if a workspace fetched/created is empty

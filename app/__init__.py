@@ -231,31 +231,72 @@ def linchpin_up() -> Response:
                     provision_type: "workspace",
                     --> value can be either pinfile or workspace
                     }
-        :return : response with fetched workspace name,id, status,
+        :return : response with fetched workspace id, status,
                   contents_of_latest_inventory_generated_in_inventoryfolder,
                   contents_of_linchpin.latest_file_in_resource_folder
     """
     try:
         data = request.json  # Get request body
-        identity = data['id']
-        # provision_type = data['provision_type']
-        cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "up"]
-        if not os.path.exists(WORKING_PATH + "/" + identity):
-            return jsonify(status=response.NOT_FOUND)
+        provision_type = data['provision_type']
+        if provision_type == "workspace":
+            identity = data['id']
+            if not os.path.exists(WORKING_PATH + "/" + identity):
+                return jsonify(status=response.NOT_FOUND)
+            if 'pinfile_path' in data:
+                pinfile_path = data['pinfile_path']
+                check_path = identity + pinfile_path
+            else:
+                check_path = identity
+            if not check_workspace_has_pinfile(check_path):
+                return jsonify(status=response.PINFILE_NOT_FOUND)
+            cmd = ["linchpin", "-w " + WORKING_DIR + check_path, "up"]
         else:
-            if check_workspace_empty(identity):
-                return jsonify(status=response.EMPTY_WORKSPACE)
-            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            output.communicate()
-            get_connection().db_update(identity,
-                                       response.PROVISION_STATUS_SUCCESS)
-            return jsonify(id=identity,
-                           status=response.PROVISION_SUCCESS,
-                           code=output.returncode,
-                           mimetype='application/json')
+            if 'name' in data:
+                identity = str(uuid.uuid4()) + "_" + data['name']
+            else:
+                identity = str(uuid.uuid4())
+            pinfile_content = data['pinfile_content']
+            precmd = ["linchpin", "-w " + WORKING_DIR + identity +
+                      "/", "init"]
+            get_connection().db_insert(identity, identity,
+                                       response.WORKSPACE_REQUESTED)
+            result = subprocess.Popen(precmd, stdout=subprocess.PIPE)
+            result.communicate()
+            get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+            json_file_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
+            print(json_file_path)
+            with open(json_file_path, 'w') as json_data:
+                json.dump(pinfile_content, json_data)
+            cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" + "PinFile.json", "up"]
+        output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output.communicate()
+        get_connection().db_update(identity,
+                                   response.PROVISION_STATUS_SUCCESS)
+        return jsonify(id=identity,
+                       status=response.PROVISION_SUCCESS,
+                       code=output.returncode,
+                       mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+def check_workspace_has_pinfile(name) -> bool:
+    """
+        Verifies if a workspace fetched/created is empty
+        :param name: name of the workspace to be verified
+        :return a boolean value True or False
+    """
+    return os.listdir(WORKING_PATH + "/" + name).__contains__("PinFile")
+
+
+def check_workspace_has_multiple_pinfiles(name) -> bool:
+    """
+        Verifies if a workspace fetched/created is empty
+        :param name: name of the workspace to be verified
+        :return a boolean value True or False
+    """
+    return os.listdir(WORKING_PATH + "/" + name).__contains__("PinFile")
 
 
 def check_workspace_empty(name) -> bool:
@@ -268,7 +309,8 @@ def check_workspace_empty(name) -> bool:
 
 
 if __name__ == "__main__":
-    handler = RotatingFileHandler(LOGGER_FILE, maxBytes=10000, backupCount=1)
+    handler = RotatingFileHandler(LOGGER_FILE,
+                                  maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)
     app.logger.addHandler(handler)
     app.register_blueprint(swaggerui_blueprint, url_prefix=SWAGGER_URL)

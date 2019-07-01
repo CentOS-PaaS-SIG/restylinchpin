@@ -1,6 +1,7 @@
 from typing import List
 from flask import Flask, jsonify, request, Response
 import subprocess
+import glob
 import os
 import yaml
 from flask_swagger_ui import get_swaggerui_blueprint
@@ -249,7 +250,18 @@ def linchpin_up() -> Response:
                 check_path = identity
             if not check_workspace_has_pinfile(check_path):
                 return jsonify(status=response.PINFILE_NOT_FOUND)
-            cmd = ["linchpin", "-w " + WORKING_DIR + check_path, "up"]
+            cmd = ["linchpin", "-w " + WORKING_DIR + check_path]
+            if 'pinfileName' in data:
+                cmd.extend(("-p", data['pinfileName']))
+            cmd.append("up")
+            if 'tx_id' in data:
+                cmd.extend(("-t", data['tx_id']))
+            elif 'run_id' in data:
+                if 'target' not in data:
+                    return jsonify(status=response.TARGET_MISSING)
+                cmd.extend(("-r", data['run_id'], data['target']))
+            if 'inventory-format' in data:
+                cmd.extend(("--if", data['inventory-format']))
         else:
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
@@ -258,22 +270,27 @@ def linchpin_up() -> Response:
             pinfile_content = data['pinfile_content']
             precmd = ["linchpin", "-w " + WORKING_DIR + identity +
                       "/", "init"]
-            get_connection().db_insert(identity, identity,
-                                       response.WORKSPACE_REQUESTED)
             result = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             result.communicate()
-            get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
-            json_file_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
-            print(json_file_path)
-            with open(json_file_path, 'w') as json_data:
+            json_pinfile_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
+            with open(json_pinfile_path, 'w') as json_data:
                 json.dump(pinfile_content, json_data)
             cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" + "PinFile.json", "up"]
+            if 'inventory_format' in data:
+                cmd.extend(("--if", data['inventory-format']))
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        get_connection().db_update(identity,
-                                   response.PROVISION_STATUS_SUCCESS)
+        latest_file_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
+        with open(latest_file_path, 'r') as myfile:
+            latest = myfile.read()
+        list_of_files = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
+        latest_file = max(list_of_files, key=os.path.getctime)
+        with open(latest_file, 'r') as file:
+            inventory = file.read()
         return jsonify(id=identity,
                        status=response.PROVISION_SUCCESS,
+                       inventory=inventory,
+                       latest=latest,
                        code=output.returncode,
                        mimetype='application/json')
     except Exception as e:
@@ -283,20 +300,11 @@ def linchpin_up() -> Response:
 
 def check_workspace_has_pinfile(name) -> bool:
     """
-        Verifies if a workspace fetched/created is empty
+        Verifies if a workspace to be provisioned contains a PinFile.json
         :param name: name of the workspace to be verified
         :return a boolean value True or False
     """
-    return os.listdir(WORKING_PATH + "/" + name).__contains__("PinFile")
-
-
-def check_workspace_has_multiple_pinfiles(name) -> bool:
-    """
-        Verifies if a workspace fetched/created is empty
-        :param name: name of the workspace to be verified
-        :return a boolean value True or False
-    """
-    return os.listdir(WORKING_PATH + "/" + name).__contains__("PinFile")
+    return os.listdir(WORKING_PATH + "/" + name).__contains__("PinFile.json")
 
 
 def check_workspace_empty(name) -> bool:

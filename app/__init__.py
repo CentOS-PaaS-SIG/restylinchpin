@@ -25,6 +25,7 @@ with open('swagger.json', 'r') as f:
 
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
+DB_PATH = doc['db_path']
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -42,6 +43,10 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 
 # path navigating to current workspace directory
 WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
+
+
+def __init__(self):
+    self.db_path = DB_PATH
 
 
 def get_connection():

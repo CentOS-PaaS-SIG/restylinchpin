@@ -288,40 +288,45 @@ def linchpin_up() -> Response:
         provision_type = data['provision_type']
         if provision_type == "workspace":
             identity = data['id']
-            if not os.path.exists(WORKING_PATH + "/" + identity):
-                return jsonify(status=response.NOT_FOUND)
-            cmd = create_cmd_up_workspace(data, identity)
         else:
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
                 identity = str(uuid.uuid4())
-            precmd = ["linchpin", "-w " + WORKING_DIR + identity +
-                      "/", "init"]
-            result = subprocess.Popen(precmd, stdout=subprocess.PIPE)
-            result.communicate()
-            cmd = create_cmd_up_pinfile(data, identity)
-        output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-        output.communicate()
-        linchpin_latest_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
-        directory_path = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
-        with open(linchpin_latest_path, 'r') as file:
-            linchpin_latest = json.load(file)
-        latest_file = max(directory_path, key=os.path.getctime)
-        with open(latest_file, 'r') as data:
-            inventory = json.load(data)
-        return jsonify(id=identity,
-                       status=response.PROVISION_SUCCESS,
-                       inventory=inventory,
-                       latest=linchpin_latest,
-                       code=output.returncode,
-                       mimetype='application/json')
+        try:
+            if provision_type == "workspace":
+                if not os.path.exists(WORKING_PATH + "/" + identity):
+                    return jsonify(status=response.NOT_FOUND)
+                cmd = create_cmd_up_workspace(data, identity)
+            else:
+                precmd = ["linchpin", "-w " + WORKING_DIR + identity +
+                          "/", "init"]
+                result = subprocess.Popen(precmd, stdout=subprocess.PIPE)
+                result.communicate()
+                cmd = create_cmd_up_pinfile(data, identity)
+            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+            output.communicate()
+            linchpin_latest_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
+            directory_path = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
+            with open(linchpin_latest_path, 'r') as file:
+                linchpin_latest = json.load(file)
+            latest_file = max(directory_path, key=os.path.getctime)
+            with open(latest_file, 'r') as data:
+                inventory = json.load(data)
+            get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
+            return jsonify(id=identity,
+                           status=response.PROVISION_SUCCESS,
+                           inventory=inventory,
+                           latest=linchpin_latest,
+                           code=output.returncode,
+                           mimetype='application/json')
+        except Exception as e:
+            get_connection().db_update(identity, response.PROVISION_FAILED)
+            app.logger.error(e)
+            return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_UP)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 def check_workspace_has_pinfile(name) -> bool:

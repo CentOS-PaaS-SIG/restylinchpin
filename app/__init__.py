@@ -27,6 +27,8 @@ with open('swagger.json', 'r') as f:
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
 DB_PATH = doc['db_path']
+INVENTORY_PATH = doc['inventory_path']
+LATEST_PATH = doc['linchpin_latest_file_path']
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -288,13 +290,16 @@ def linchpin_up() -> Response:
         provision_type = data['provision_type']
         if provision_type == "workspace":
             identity = data['id']
+            isworkspace = True
         else:
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
+
             else:
                 identity = str(uuid.uuid4())
+            isworkspace = False
         try:
-            if provision_type == "workspace":
+            if isworkspace:
                 if not os.path.exists(WORKING_PATH + "/" + identity):
                     return jsonify(status=response.NOT_FOUND)
                 cmd = create_cmd_up_workspace(data, identity)
@@ -306,8 +311,8 @@ def linchpin_up() -> Response:
                 cmd = create_cmd_up_pinfile(data, identity)
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output.communicate()
-            linchpin_latest_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
-            directory_path = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
+            linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
+            directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
             with open(linchpin_latest_path, 'r') as file:
                 linchpin_latest = json.load(file)
             latest_file = max(directory_path, key=os.path.getctime)

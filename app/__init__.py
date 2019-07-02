@@ -222,7 +222,53 @@ def linchpin_fetch_workspace() -> Response:
             return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
-                       message=errors.KEY_ERROR_PARAMS)
+                       message=errors.KEY_ERROR_PARAMS_FETCH)
+
+
+def create_cmd_up_workspace(data, identity) -> List[str]:
+    """
+        Creates a list to feed the subprocess for provisioning
+        existing workspaces
+        :param data: JSON data from POST requestBody
+        :param identity: unique uuid_name assigned to the workspace
+        :return a list for the subprocess to run
+    """
+    if 'pinfile_path' in data:
+        pinfile_path = data['pinfile_path']
+        check_path = identity + pinfile_path
+    else:
+        check_path = identity
+    if not check_workspace_has_pinfile(check_path):
+        return jsonify(status=response.PINFILE_NOT_FOUND)
+    cmd = ["linchpin", "-w " + WORKING_DIR + check_path]
+    if 'pinfileName' in data:
+        cmd.extend(("-p", data['pinfileName']))
+    cmd.append("up")
+    if 'tx_id' in data:
+        cmd.extend(("-t", data['tx_id']))
+    elif 'run_id' and 'target' in data:
+        cmd.extend(("-r", data['run_id'], data['target']))
+    if 'inventory-format' in data:
+        cmd.extend(("--if", data['inventory-format']))
+    return cmd
+
+
+def create_cmd_up_pinfile(data, identity) -> List[str]:
+    """
+        Creates a list to feed the subprocess for provisioning
+        new workspaces instantiated using a pinfile
+        :param data: JSON data from POST requestBody
+        :param identity: unique uuid_name assigned to the workspace
+        :return a list for the subprocess to run
+    """
+    pinfile_content = data['pinfile_content']
+    json_pinfile_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
+    with open(json_pinfile_path, 'w') as json_data:
+        json.dump(pinfile_content, json_data)
+    cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" + "PinFile.json", "up"]
+    if 'inventory_format' in data:
+        cmd.extend(("--if", data['inventory-format']))
+    return cmd
 
 
 @app.route('/workspace/up', methods=['POST'])
@@ -244,56 +290,35 @@ def linchpin_up() -> Response:
             identity = data['id']
             if not os.path.exists(WORKING_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
-            if 'pinfile_path' in data:
-                pinfile_path = data['pinfile_path']
-                check_path = identity + pinfile_path
-            else:
-                check_path = identity
-            if not check_workspace_has_pinfile(check_path):
-                return jsonify(status=response.PINFILE_NOT_FOUND)
-            cmd = ["linchpin", "-w " + WORKING_DIR + check_path]
-            if 'pinfileName' in data:
-                cmd.extend(("-p", data['pinfileName']))
-            cmd.append("up")
-            if 'tx_id' in data:
-                cmd.extend(("-t", data['tx_id']))
-            elif 'run_id' in data:
-                if 'target' not in data:
-                    return jsonify(status=response.TARGET_MISSING)
-                cmd.extend(("-r", data['run_id'], data['target']))
-            if 'inventory-format' in data:
-                cmd.extend(("--if", data['inventory-format']))
+            cmd = create_cmd_up_workspace(data, identity)
         else:
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
                 identity = str(uuid.uuid4())
-            pinfile_content = data['pinfile_content']
             precmd = ["linchpin", "-w " + WORKING_DIR + identity +
                       "/", "init"]
             result = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             result.communicate()
-            json_pinfile_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
-            with open(json_pinfile_path, 'w') as json_data:
-                json.dump(pinfile_content, json_data)
-            cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" + "PinFile.json", "up"]
-            if 'inventory_format' in data:
-                cmd.extend(("--if", data['inventory-format']))
+            cmd = create_cmd_up_pinfile(data, identity)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        latest_file_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
-        with open(latest_file_path, 'r') as myfile:
-            latest = json.load(myfile)
-        list_of_files = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
-        latest_file = max(list_of_files, key=os.path.getctime)
-        with open(latest_file, 'r') as file:
-            inventory = json.load(file)
+        linchpin_latest_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
+        directory_path = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
+        with open(linchpin_latest_path, 'r') as file:
+            linchpin_latest = json.load(file)
+        latest_file = max(directory_path, key=os.path.getctime)
+        with open(latest_file, 'r') as data:
+            inventory = json.load(data)
         return jsonify(id=identity,
                        status=response.PROVISION_SUCCESS,
                        inventory=inventory,
-                       latest=latest,
+                       latest=linchpin_latest,
                        code=output.returncode,
                        mimetype='application/json')
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_UP)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))

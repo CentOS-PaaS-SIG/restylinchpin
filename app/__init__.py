@@ -11,7 +11,7 @@ import logging
 import re
 import uuid
 from logging.handlers import RotatingFileHandler
-from dal.RestDB import RestDB
+import dal.RestDB
 from config import errors, response
 
 app = Flask(__name__)
@@ -26,6 +26,7 @@ with open('swagger.json', 'r') as f:
 
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
+DB_PATH = doc['db_path']
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -45,12 +46,16 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 
 
+def __init__(self):
+    self.db_path = DB_PATH
+
+
 def get_connection():
     """
         Method to create an object of subclass and create a connection
         :return : an instantiated object for class RestDB
     """
-    return RestDB()
+    return dal.RestDB.RestDB()
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])

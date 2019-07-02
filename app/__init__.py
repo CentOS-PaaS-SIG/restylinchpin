@@ -282,11 +282,11 @@ def linchpin_up() -> Response:
         output.communicate()
         latest_file_path = WORKING_PATH + "/" + identity + "/dummy/resources/linchpin.latest"
         with open(latest_file_path, 'r') as myfile:
-            latest = myfile.read()
+            latest = json.load(myfile)
         list_of_files = glob.glob(WORKING_PATH + "/" + identity + "/dummy/inventories/*")
         latest_file = max(list_of_files, key=os.path.getctime)
         with open(latest_file, 'r') as file:
-            inventory = file.read()
+            inventory = json.load(file)
         return jsonify(id=identity,
                        status=response.PROVISION_SUCCESS,
                        inventory=inventory,

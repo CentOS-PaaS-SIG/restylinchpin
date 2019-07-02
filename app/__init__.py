@@ -10,7 +10,7 @@ import logging
 import re
 import uuid
 from logging.handlers import RotatingFileHandler
-from dal.RestDB import RestDB
+import dal.RestDB
 from config import errors, response
 
 app = Flask(__name__)
@@ -54,7 +54,7 @@ def get_connection():
         Method to create an object of subclass and create a connection
         :return : an instantiated object for class RestDB
     """
-    return RestDB()
+    return dal.RestDB.RestDB()
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])

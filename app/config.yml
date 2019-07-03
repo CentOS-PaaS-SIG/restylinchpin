@@ -1,4 +1,6 @@
 # place where all the created workspaces are stored
-working_path: /tmp
+working_path: /
 logger_file_name: restylinchpin.log
 db_path: db.json
+inventory_path: /dummy/inventories/*
+linchpin_latest_file_path: /dummy/resources/linchpin.latest

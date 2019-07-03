@@ -254,8 +254,8 @@ def create_cmd_up_workspace(data, identity) -> List[str]:
         cmd.extend(("-t", data['tx_id']))
     elif 'run_id' and 'target' in data:
         cmd.extend(("-r", data['run_id'], data['target']))
-    if 'inventory-format' in data:
-        cmd.extend(("--if", data['inventory-format']))
+    if 'inventory_format' in data:
+        cmd.extend(("--if", data['inventory_format']))
     return cmd
 
 
@@ -273,7 +273,7 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
         json.dump(pinfile_content, json_data)
     cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" + "PinFile.json", "up"]
     if 'inventory_format' in data:
-        cmd.extend(("--if", data['inventory-format']))
+        cmd.extend(("--if", data['inventory_format']))
     return cmd
 
 
@@ -310,18 +310,20 @@ def linchpin_up() -> Response:
             else:
                 precmd = ["linchpin", "-w " + WORKING_DIR + identity +
                           "/", "init"]
-                result = subprocess.Popen(precmd, stdout=subprocess.PIPE)
-                result.communicate()
+                output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
+                output.communicate()
+                get_connection().db_insert(identity, "NA",
+                                           response.WORKSPACE_REQUESTED)
                 cmd = create_cmd_up_pinfile(data, identity)
             output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
             output.communicate()
             linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
-            directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
             with open(linchpin_latest_path, 'r') as file:
                 linchpin_latest = json.load(file)
+            directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
             latest_file = max(directory_path, key=os.path.getctime)
             with open(latest_file, 'r') as data:
-                inventory = json.load(data)
+                inventory = data.read()
             get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
             return jsonify(id=identity,
                            status=response.PROVISION_SUCCESS,

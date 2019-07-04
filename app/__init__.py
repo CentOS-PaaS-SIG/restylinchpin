@@ -289,6 +289,7 @@ def linchpin_up() -> Response:
                   contents_of_latest_inventory_generated_in_inventoryfolder,
                   contents_of_linchpin.latest_file_in_resource_folder
     """
+    identity = None
     try:
         data = request.json  # Get request body
         provision_type = data['provision_type']
@@ -302,42 +303,41 @@ def linchpin_up() -> Response:
             else:
                 identity = str(uuid.uuid4())
             isworkspace = False
-        try:
-            if isworkspace:
-                if not os.path.exists(WORKING_PATH + "/" + identity):
-                    return jsonify(status=response.NOT_FOUND)
-                cmd = create_cmd_up_workspace(data, identity)
-            else:
-                precmd = ["linchpin", "-w " + WORKING_DIR + identity +
-                          "/", "init"]
-                output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
-                output.communicate()
-                get_connection().db_insert(identity, "NA",
-                                           response.WORKSPACE_REQUESTED)
-                cmd = create_cmd_up_pinfile(data, identity)
-            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        if isworkspace:
+            if not os.path.exists(WORKING_PATH + "/" + identity):
+                return jsonify(status=response.NOT_FOUND)
+            cmd = create_cmd_up_workspace(data, identity)
+        else:
+            precmd = ["linchpin", "-w " + WORKING_DIR + identity +
+                      "/", "init"]
+            output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             output.communicate()
-            linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
-            with open(linchpin_latest_path, 'r') as file:
-                linchpin_latest = json.load(file)
-            directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
-            latest_file = max(directory_path, key=os.path.getctime)
-            with open(latest_file, 'r') as data:
-                inventory = data.read()
-            get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
-            return jsonify(id=identity,
-                           status=response.PROVISION_SUCCESS,
-                           inventory=inventory,
-                           latest=linchpin_latest,
-                           code=output.returncode,
-                           mimetype='application/json')
-        except Exception as e:
-            get_connection().db_update(identity, response.PROVISION_FAILED)
-            app.logger.error(e)
-            return jsonify(status=errors.ERROR_STATUS, message=str(e))
+            get_connection().db_insert_no_name(identity,
+                                               response.WORKSPACE_REQUESTED)
+            cmd = create_cmd_up_pinfile(data, identity)
+        output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output.communicate()
+        linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
+        with open(linchpin_latest_path, 'r') as file:
+            linchpin_latest = json.load(file)
+        directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
+        latest_file = max(directory_path, key=os.path.getctime)
+        with open(latest_file, 'r') as data:
+            inventory = data.read()
+        get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
+        return jsonify(id=identity,
+                       status=response.PROVISION_SUCCESS,
+                       inventory=inventory,
+                       latest=linchpin_latest,
+                       code=output.returncode,
+                       mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_UP)
+    except Exception as e:
+        get_connection().db_update(identity, response.PROVISION_FAILED)
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 def check_workspace_has_pinfile(name) -> bool:

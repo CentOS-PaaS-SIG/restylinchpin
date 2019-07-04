@@ -11,12 +11,20 @@ class RestDB(BaseDB):
 
     def db_insert(self, identity, name, status) -> None:
         """
-            Inserts a workspace with id, name and wid to the db
+            Inserts a workspace with id, name and status to the db
             :param name: name of the workspace to be inserted in db
             :param identity: unique uuid_name assigned to the workspace
             :param status: field specifying workspace creation inserted in db
         """
         self.db.insert({'id': str(identity), 'name': name, 'status': status})
+
+    def db_insert_no_name(self, identity, status) -> None:
+        """
+            Inserts a workspace with id, and status to the db
+            :param identity: unique uuid_name assigned to the workspace
+            :param status: field specifying workspace creation inserted in db
+        """
+        self.db.insert({'id': str(identity), 'status': status})
 
     def db_remove(self, identity) -> None:
         """

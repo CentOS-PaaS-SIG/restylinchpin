@@ -319,7 +319,7 @@ def linchpin_up() -> Response:
         directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
         latest_file = max(directory_path, key=os.path.getctime)
         with open(latest_file, 'r') as data:
-            inventory = data.read()
+            inventory = data.read().replace('\n', ' ')
         get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
         return jsonify(id=identity,
                        status=response.PROVISION_SUCCESS,

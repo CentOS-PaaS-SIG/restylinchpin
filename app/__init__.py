@@ -267,7 +267,8 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
     json_pinfile_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
     with open(json_pinfile_path, 'w') as json_data:
         json.dump(pinfile_content, json_data)
-    cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" + "PinFile.json", "up"]
+    cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" +
+           "PinFile.json", "up"]
     if 'inventory_format' in data:
         cmd.extend(("--if", data['inventory_format']))
     return cmd
@@ -311,7 +312,8 @@ def linchpin_up() -> Response:
         linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
         with open(linchpin_latest_path, 'r') as file:
             linchpin_latest = json.load(file)
-        directory_path = glob.glob(WORKING_PATH + "/" + identity + INVENTORY_PATH)
+        directory_path = glob.glob(WORKING_PATH + "/" + identity +
+                                   INVENTORY_PATH)
         latest_file = max(directory_path, key=os.path.getctime)
         with open(latest_file, 'r') as data:
             inventory = data.read().replace('\n', ' ')

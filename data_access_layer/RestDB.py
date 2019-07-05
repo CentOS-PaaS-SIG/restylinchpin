@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from tinydb import TinyDB, Query
-from dal.BaseDB import BaseDB
+from data_access_layer.BaseDB import BaseDB
 from typing import List
 from typing import Dict
 

@@ -1,13 +1,14 @@
 from __future__ import absolute_import
 from tinydb import TinyDB, Query
-import app
 from dal.BaseDB import BaseDB
 from typing import List
 from typing import Dict
 
 
 class RestDB(BaseDB):
-    db = TinyDB(app.DB_PATH)
+
+    def __init__(self, path):
+        self.db = TinyDB(path)
 
     def db_insert(self, identity, name, status) -> None:
         """

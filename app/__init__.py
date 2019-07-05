@@ -45,16 +45,12 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
 
 
-def __init__(self):
-    self.db_path = DB_PATH
-
-
 def get_connection():
     """
         Method to create an object of subclass and create a connection
         :return : an instantiated object for class RestDB
     """
-    return dal.RestDB.RestDB()
+    return dal.RestDB.RestDB(DB_PATH)
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])

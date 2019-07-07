@@ -278,7 +278,7 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
 def linchpin_up() -> Response:
     """
         POST request route for provisioning workspaces/pinFile already created
-        RequestBody: {"name": "workspacename/pinfilename",
+        RequestBody: {"id": "workspace_id",
                     provision_type: "workspace",
                     --> value can be either pinfile or workspace
                     }

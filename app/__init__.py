@@ -231,8 +231,8 @@ def linchpin_fetch_workspace() -> Response:
 
 def create_cmd_workspace(data, identity, action) -> List[str]:
     """
-        Creates a list to feed the subprocess for provisioning
-        existing workspaces
+        Creates a list to feed the subprocess for provisioning/
+        destroying existing workspaces
         :param data: JSON data from POST requestBody
         :param identity: unique uuid_name assigned to the workspace
         :param action: up or destroy action

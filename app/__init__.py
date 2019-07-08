@@ -10,7 +10,6 @@ import json
 import logging
 import re
 import uuid
-import sys
 from logging.handlers import RotatingFileHandler
 import data_access_layer.RestDB
 from config import errors, response

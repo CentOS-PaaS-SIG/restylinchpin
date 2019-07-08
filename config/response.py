@@ -1,7 +1,7 @@
 CREATE_SUCCESS = "Workspace created successfully"
 DELETE_SUCCESS = "Workspace deleted successfully"
 PROVISION_SUCCESS = "Workspace provisioned successfully"
-DESTROY_SUCCESS = "Workspace destroyed successfully"
+DESTROY_SUCCESS = "Workspace/resources destroyed successfully"
 NOT_FOUND = "Workspace does not exist"
 DUPLICATE_WORKSPACE = "Workspace with same name found," \
                       "try again by renaming"

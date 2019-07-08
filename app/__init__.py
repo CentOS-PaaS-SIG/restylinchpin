@@ -29,6 +29,7 @@ LOGGER_FILE = doc['logger_file_name']
 DB_PATH = doc['db_path']
 INVENTORY_PATH = doc['inventory_path']
 LATEST_PATH = doc['linchpin_latest_file_path']
+PINFILE_JSON_PATH = doc['pinfile_json_path']
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -240,11 +241,15 @@ def create_cmd_up_workspace(data, identity) -> List[str]:
         check_path = identity + pinfile_path
     else:
         check_path = identity
-    if not check_workspace_has_pinfile(check_path):
-        return jsonify(status=response.PINFILE_NOT_FOUND)
     cmd = ["linchpin", "-w " + WORKING_DIR + check_path]
     if 'pinfileName' in data:
         cmd.extend(("-p", data['pinfileName']))
+        pinfile_name = data['pinfileName']
+    else:
+        pinfile_name = "PinFile"
+    if not check_workspace_has_pinfile(check_path, pinfile_name):
+        return jsonify(status=response.PINFILE_NOT_FOUND)
+    print(pinfile_name)
     cmd.append("up")
     if 'tx_id' in data:
         cmd.extend(("-t", data['tx_id']))
@@ -264,7 +269,7 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
         :return a list for the subprocess to run
     """
     pinfile_content = data['pinfile_content']
-    json_pinfile_path = WORKING_PATH + "/" + identity + "/dummy/PinFile.json"
+    json_pinfile_path = WORKING_PATH + "/" + identity + PINFILE_JSON_PATH
     with open(json_pinfile_path, 'w') as json_data:
         json.dump(pinfile_content, json_data)
     cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" +
@@ -295,7 +300,7 @@ def linchpin_up() -> Response:
             if not os.path.exists(WORKING_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
             cmd = create_cmd_up_workspace(data, identity)
-        else:
+        elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
@@ -307,6 +312,8 @@ def linchpin_up() -> Response:
             get_connection().db_insert_no_name(identity,
                                                response.WORKSPACE_REQUESTED)
             cmd = create_cmd_up_pinfile(data, identity)
+        else:
+            raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
         linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
@@ -333,13 +340,14 @@ def linchpin_up() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-def check_workspace_has_pinfile(name) -> bool:
+def check_workspace_has_pinfile(name, pinfile_name) -> bool:
     """
         Verifies if a workspace to be provisioned contains a PinFile.json
         :param name: name of the workspace to be verified
+        :param pinfilename: name of pinfile in directory
         :return a boolean value True or False
     """
-    return os.listdir(WORKING_PATH + "/" + name).__contains__("PinFile.json")
+    return os.listdir(WORKING_PATH + "/" + name).__contains__(pinfile_name)
 
 
 def check_workspace_empty(name) -> bool:

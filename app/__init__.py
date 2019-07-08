@@ -249,7 +249,6 @@ def create_cmd_up_workspace(data, identity) -> List[str]:
         pinfile_name = "PinFile"
     if not check_workspace_has_pinfile(check_path, pinfile_name):
         return jsonify(status=response.PINFILE_NOT_FOUND)
-    print(pinfile_name)
     cmd.append("up")
     if 'tx_id' in data:
         cmd.extend(("-t", data['tx_id']))

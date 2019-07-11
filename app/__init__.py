@@ -1,3 +1,4 @@
+from typing import List
 from flask import Flask, jsonify, request, Response
 import subprocess
 import os
@@ -6,7 +7,12 @@ from flask_swagger_ui import get_swaggerui_blueprint
 import shutil
 import json
 import logging
+import re
+import uuid
 from logging.handlers import RotatingFileHandler
+import data_access_layer.RestDB
+from config import errors, response
+
 app = Flask(__name__)
 
 # Reading directory path from config.yml file
@@ -19,6 +25,7 @@ with open('swagger.json', 'r') as f:
 
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
+DB_PATH = doc['db_path']
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -34,106 +41,196 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     }
 )
 
+# path navigating to current workspace directory
+WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
+
+
+def get_connection():
+    """
+        Method to create an object of subclass and create a connection
+        :return : an instantiated object for class RestDB
+    """
+    return data_access_layer.RestDB.RestDB(DB_PATH)
+
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
-def linchpin_init():
+def linchpin_init() -> Response:
+    """
+        POST request route for creating workspaces.
+        RequestBody: {"name": "workspacename"}
+        :return : response with created workspace name,
+                  id, status and code
+    """
     try:
-        data = request.json     # Get request body
+        data = request.json  # Get request body
         name = data["name"]
-        # Checking if workspace already exists
-        if os.path.exists(WORKING_DIR + "/" + name):
-            return jsonify(status="Workspace already exists")
-        else:
-            output = subprocess.Popen(["linchpin", "-w " +
-                                       WORKING_DIR + name +
-                                       "/", "init"], stdout=subprocess.PIPE)
-            return jsonify(name=data["name"],
-                           status="Workspace created successfully",
-                           Code=output.returncode)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=409, code=output.returncode)
+        identity = str(uuid.uuid4()) + "_" + name
+        try:
+            get_connection().db_insert(identity, name,
+                                       response.WORKSPACE_REQUESTED)
+            if not re.match("^[a-zA-Z0-9]*$", name):
+                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                return jsonify(status=errors.ERROR_STATUS,
+                               message=errors.INVALID_NAME)
+            else:
+                # Checking if workspace name contains any special characters
+                output = subprocess.Popen(["linchpin", "-w " +
+                                          WORKING_DIR + identity +
+                                          "/", "init"], stdout=subprocess.PIPE)
+                get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+                return jsonify(name=data["name"], id=identity,
+                               status=response.CREATE_SUCCESS,
+                               Code=output.returncode,
+                               mimetype='application/json')
+        except Exception as e:
+            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            app.logger.error(e)
+            return jsonify(status=errors.ERROR_STATUS, message=str(e))
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_NAME)
+
 
 # Route for listing all workspaces
 @app.route('/workspace/list', methods=['GET'])
-def linchpin_list_workspace():
+def linchpin_list_workspace() -> Response:
+    """
+        GET request route for listing workspaces.
+        :return : response with a list of workspaces
+        from the destination set in config.py
+    """
     try:
-        workspace_array = []
+        workspace_array = get_connection().db_list_all()
         # path specifying location of working directory inside server
-        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
-            if os.path.isdir(x):
-                workspace_dict = {'name ': x}
-                workspace_array.append(workspace_dict)
         return Response(json.dumps(workspace_array), status=200,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=409, message=str(e))
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
-
-@app.route('/workspace/delete', methods=['POST'])
-def linchpin_delete_workspace():
+# Route for listing workspaces filtered by name
+@app.route('/workspace/list/<name>', methods=['GET'])
+def linchpin_list_workspace_by_name(name) -> Response:
+    """
+        GET request route for listing workspaces by name
+        :return : response with a list of workspaces filtered by name
+    """
     try:
-        data = request.json  # Get request body
-        name = data["name"]
+        workspace = get_connection().db_search(name)
         # path specifying location of working directory inside server
-        for x in os.listdir(os.path.join(app.root_path + WORKING_DIR)):
-            if x == name:
-                shutil.rmtree(name)
-                return jsonify(name=name,
-                               status="Workspace deleted successfully")
-        return jsonify(status="Workspace " + name + " not found")
+        return Response(json.dumps(workspace), status=200,
+                        mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
-        return jsonify(status=409, message=str(e))
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+# Route for deleting workspaces by Id
+@app.route('/workspace/delete/<identity>', methods=['DELETE'])
+def linchpin_delete_workspace(identity) -> Response:
+    """
+        DELETE request route for deleting workspaces.
+        :param : unique uuid_name assigned to the workspace
+        :return : response with deleted workspace id and status
+    """
+    try:
+        # path specifying location of working directory inside server
+        for x in os.listdir(WORKING_PATH):
+            if x == identity:
+                shutil.rmtree(WORKING_PATH + "/" + x)
+                get_connection().db_remove(identity)
+                return jsonify(id=identity,
+                               status=response.DELETE_SUCCESS,
+                               mimetype='application/json')
+        return jsonify(status=response.NOT_FOUND)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_NAME)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+def create_fetch_cmd(data, identity) -> List[str]:
+    """
+        Creates a list to feed the subprocess in fetch API
+        :param data: JSON data from POST requestBody
+        :param identity: unique uuid_name assigned to the workspace
+        :return a list for the subprocess to run
+    """
+    url = data['url']
+    repo = None
+    # initial list
+    cmd = ["linchpin", "-w " + WORKING_DIR + identity, "fetch"]
+
+    # Check for repoType field in request,
+    # Only true if it is set to web
+    if 'repoType' in data:
+        if data['repoType'] == 'web':
+            repo = 'web'
+            cmd.append("--web")
+
+    if 'rootfolder' in data:
+        cmd.extend(("--root", data['rootfolder']))
+
+    if repo is None and 'branch' in data:
+        cmd.extend(("--branch", data['branch']))
+
+    # last item to be added in the array
+    if 'url' in data:
+        cmd.append(str(url))
+    return cmd
 
 
 @app.route('/workspace/fetch', methods=['POST'])
-def linchpin_fetch_workspace():
+def linchpin_fetch_workspace() -> Response:
+    """
+        POST request route for fetching workspaces from a remote URL
+        RequestBody: {"name": "workspacename","url": "www.github.com/someurl",
+        "rootfolder":"/path/to/folder"}
+        :return : response with fetched workspace name,id, status and code
+    """
     try:
         data = request.json  # Get request body
         name = data['name']
-        url = data['url']
-        repo = None
-        # initial list
-        cmd = ["linchpin", "-w " + WORKING_DIR + name + "/", "fetch"]
-
-        # Check for repoType field in request,
-        # Only true if it is set to web
-        if 'repoType' in data:
-            if data['repoType'] == 'web':
-                repo = 'web'
-                cmd.append("--web")
-
-        if 'rootfolder' in data:
-            cmd.extend(("--root", data['rootfolder']))
-
-        if repo is None and 'branch' in data:
-            cmd.extend(("--branch", data['branch']))
-
-        # last item to be added in the array
-        if 'url' in data:
-            cmd.append(str(url))
-        # Checking if workspace already exists
-        if os.path.exists(os.path.join(app.root_path,
-                                       WORKING_DIR + "/" + name)):
-            return jsonify(status="workspace with the same "
-                                  "name found try again by renaming")
-        else:
-            output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
-            if check_workspace_empty(name):
-                return jsonify(message="Only public repositories can be "
-                                       "used as fetch URl's")
-            return jsonify(name=data["name"], status="Workspace created "
-                                                     "successfully",
-                           code=output.returncode)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=409, message=str(e))
+        identity = str(uuid.uuid4()) + "_" + name
+        try:
+            get_connection().db_insert(identity, name,
+                                       response.WORKSPACE_REQUESTED)
+            cmd = create_fetch_cmd(data, identity)
+            # Checking if workspace name contains special characters
+            if not re.match("^[a-zA-Z0-9]*$", name):
+                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                return jsonify(status=errors.ERROR_STATUS,
+                               message=errors.INVALID_NAME)
+            else:
+                output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+                output.communicate()
+                if check_workspace_empty(identity):
+                    get_connection().db_update(identity,
+                                               response.WORKSPACE_FAILED)
+                    return jsonify(status=response.EMPTY_WORKSPACE)
+                get_connection().db_update(identity,
+                                           response.WORKSPACE_SUCCESS)
+                return jsonify(name=data["name"], id=identity,
+                               status=response.CREATE_SUCCESS,
+                               code=output.returncode,
+                               mimetype='application/json')
+        except Exception as e:
+            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            app.logger.error(e)
+            return jsonify(status=errors.ERROR_STATUS, message=str(e))
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_PARAMS)
 
 
-def check_workspace_empty(name):
-    return os.listdir(app.root_path + WORKING_DIR + name) == []
+def check_workspace_empty(name) -> bool:
+    """
+        Verifies if a workspace fetched/created is empty
+        :param name: name of the workspace to be verified
+        :return a boolean value True or False
+    """
+    return os.listdir(WORKING_PATH + "/" + name) == []
 
 
 if __name__ == "__main__":

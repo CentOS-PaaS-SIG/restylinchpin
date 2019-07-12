@@ -8,6 +8,10 @@ class BaseDB(ABC):
         return
 
     @abstractmethod
+    def db_insert_no_name(self, identity, status):
+        return
+
+    @abstractmethod
     def db_search(self, name):
         return
 

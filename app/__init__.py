@@ -228,12 +228,13 @@ def linchpin_fetch_workspace() -> Response:
                        message=errors.KEY_ERROR_PARAMS_FETCH)
 
 
-def create_cmd_up_workspace(data, identity) -> List[str]:
+def create_cmd_workspace(data, identity, action) -> List[str]:
     """
-        Creates a list to feed the subprocess for provisioning
-        existing workspaces
+        Creates a list to feed the subprocess for provisioning/
+        destroying existing workspaces
         :param data: JSON data from POST requestBody
         :param identity: unique uuid_name assigned to the workspace
+        :param action: up or destroy action
         :return a list for the subprocess to run
     """
     if 'pinfile_path' in data:
@@ -249,7 +250,7 @@ def create_cmd_up_workspace(data, identity) -> List[str]:
         pinfile_name = "PinFile"
     if not check_workspace_has_pinfile(check_path, pinfile_name):
         return jsonify(status=response.PINFILE_NOT_FOUND)
-    cmd.append("up")
+    cmd.append(action)
     if 'tx_id' in data:
         cmd.extend(("-t", data['tx_id']))
     elif 'run_id' and 'target' in data:
@@ -286,7 +287,7 @@ def linchpin_up() -> Response:
                     provision_type: "workspace",
                     --> value can be either pinfile or workspace
                     }
-        :return : response with fetched workspace id, status,
+        :return : response with provisioned workspace id, status,
                   contents_of_latest_inventory_generated_in_inventoryfolder,
                   contents_of_linchpin.latest_file_in_resource_folder
     """
@@ -298,7 +299,7 @@ def linchpin_up() -> Response:
             identity = data['id']
             if not os.path.exists(WORKING_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
-            cmd = create_cmd_up_workspace(data, identity)
+            cmd = create_cmd_workspace(data, identity, "up")
         elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
@@ -339,11 +340,40 @@ def linchpin_up() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
+@app.route('/workspace/destroy', methods=['POST'])
+def linchpin_destroy() -> Response:
+    """
+        POST request route for destroying workspaces/resources already created
+        or provisioned
+        RequestBody: {"id": "workspace_id"}
+        :return : response with destroyed workspace id and status
+    """
+    identity = None
+    try:
+        data = request.json  # Get request body
+        identity = data['id']
+        cmd = create_cmd_workspace(data, identity, "destroy")
+        output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
+        output.communicate()
+        get_connection().db_update(identity, response.DESTROY_STATUS_SUCCESS)
+        return jsonify(id=identity,
+                       status=response.DESTROY_SUCCESS,
+                       code=output.returncode,
+                       mimetype='application/json')
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR_DESTROY)
+    except Exception as e:
+        get_connection().db_update(identity, response.DESTROY_FAILED)
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
 def check_workspace_has_pinfile(name, pinfile_name) -> bool:
     """
         Verifies if a workspace to be provisioned contains a PinFile.json
         :param name: name of the workspace to be verified
-        :param pinfilename: name of pinfile in directory
+        :param pinfile_name: name of pinfile in directory
         :return a boolean value True or False
     """
     return os.listdir(WORKING_PATH + "/" + name).__contains__(pinfile_name)

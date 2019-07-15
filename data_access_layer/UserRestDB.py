@@ -3,6 +3,7 @@ from tinydb import TinyDB, Query
 from data_access_layer.UserBaseDB import UserBaseDB
 from typing import List
 from typing import Dict
+from tinydb.operations import delete
 
 
 class UserRestDB(UserBaseDB):
@@ -47,6 +48,14 @@ class UserRestDB(UserBaseDB):
     def db_remove(self, username) -> None:
         user = Query()
         self.db.remove(user.username == username)
+
+    def db_remove_api_key(self, api_key) -> None:
+        user = Query()
+        self.db.update(delete('api_key'), user.api_key == api_key)
+
+    def db_reset_api_key(self, username, new_api_key) -> None:
+        user = Query()
+        self.db.update({'api_key': new_api_key}, user.username == username)
 
     def db_update(self, username, api_key) -> None:
         user = Query()

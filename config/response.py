@@ -16,5 +16,14 @@ PINFILE_NOT_FOUND = "PinFile not found. Please check that it exists or specify p
 DESTROY_STATUS_SUCCESS = "Destroyed"
 DESTROY_FAILED = "FAILED destroy"
 STATUS_OK = "200 OK"
+USER_ALREADY_EXISTS = "Username already taken, please try again using another username"
+USER_DELETED = "User deleted successfuly"
+USER_NOT_FOUND = "User does not exist"
+USER_PROMOTED = "User has been promoted as admin user"
+API_KEY_DELETED = "Api key is deleted"
+API_KEY_RESET = "Api key has been reset"
+AUTH_FAILED = "Invalid username or password, please try again"
+TOKEN_MISSING = "Token is missing"
+TOKEN_INVALID = "Token is invalid!"
 
 

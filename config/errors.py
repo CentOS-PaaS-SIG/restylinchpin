@@ -6,3 +6,4 @@ KEY_ERROR_UP = "Please provide request body with appropriate key, values"
 KEY_ERROR_DESTROY = "Please provide request body in format:{id: workspace_id}"
 INVALID_NAME = "Workspace name cannot contain special characters, please try again my renaming"
 ERROR_STATUS = 409
+UNAUTHORIZED_REQUEST = "Unauthorized Request Error"

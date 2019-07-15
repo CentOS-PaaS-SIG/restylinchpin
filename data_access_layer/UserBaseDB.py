@@ -28,9 +28,18 @@ class UserBaseDB(ABC):
         pass
 
     @abstractmethod
+    def db_remove_api_key(self, username):
+        pass
+
+    @abstractmethod
     def db_update(self, username, api_key):
         pass
 
     @abstractmethod
     def db_update_admin(self, username, admin):
         pass
+
+    @abstractmethod
+    def db_reset_api_key(self, username, new_api_key):
+        pass
+

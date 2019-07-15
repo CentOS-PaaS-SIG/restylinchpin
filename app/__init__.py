@@ -34,6 +34,8 @@ USERS_DB_PATH = doc['users_db_path']
 INVENTORY_PATH = doc['inventory_path']
 LATEST_PATH = doc['linchpin_latest_file_path']
 PINFILE_JSON_PATH = doc['pinfile_json_path']
+ADMIN_USERNAME = doc['admin_username']
+ADMIN_PASSWORD = doc['admin_password']
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -76,60 +78,71 @@ def token_required(function):
         if 'Token' in request.headers:
             token = request.headers['Token']
         if not token:
-            return jsonify({'message': 'Token is missing!'})
+            return jsonify(response.TOKEN_MISSING)
         try:
             current_user = get_connection_users().db_get_api_key(token)
             if current_user is None:
-                return jsonify({'message': 'Token is invalid!'})
+                return jsonify(response.TOKEN_INVALID)
         except Exception as e:
-            return jsonify({'message': 'Token is invalid!', 'status': e})
+            return jsonify(message=response.TOKEN_INVALID, statu=e)
         return function(current_user, *args, **kwargs)
     return decorated
+
+
+def create_admin_user():
+    username = ADMIN_USERNAME
+    password = ADMIN_PASSWORD
+    if get_connection_users().db_get_username(username):
+        return
+    hashed_password = generate_password_hash(password, method='sha256')
+    hashed_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+    admin = True
+    get_connection_users().db_insert(username, hashed_password, hashed_api_key, admin)
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
 @token_required
 def new_user(current_user):
     if not current_user['admin']:
-        return jsonify({'message': 'Cannot perform that function!'})
+        return jsonify(errors.UNAUTHORIZED_REQUEST)
     username = request.json.get('username')
     password = request.json.get('password')
     api_key = str(uuid.uuid4())
     if username is None or password is None:
         abort(errors.ERROR_STATUS)    # missing arguments
-    if not get_connection_users().db_search_name(username) is not None:
-        abort(errors.ERROR_STATUS)    # existing user
+    if get_connection_users().db_get_username(username):
+        return jsonify(message=response.USER_ALREADY_EXISTS)
     hashed_password = generate_password_hash(password, method='sha256')
     hashed_api_key = generate_password_hash(api_key, method='sha256')
     admin = False
     get_connection_users().db_insert(username, hashed_password, hashed_api_key, admin)
-    return jsonify(username=username, status=response.STATUS_OK)
+    return jsonify(username=username, admin=admin, status=response.STATUS_OK)
 
 
-@app.route('/api/v1.0/users/login')
+@app.route('/api/v1.0/login')
 def login():
     authorize = request.authorization
     if not authorize or not authorize.username or not authorize.password:
-        return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
+        return make_response(response.AUTH_FAILED)
 
     user = get_connection_users().db_get_username(authorize.username)
 
     if not user:
-        return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
+        return make_response(response.AUTH_FAILED)
 
     if check_password_hash(user['password'], authorize.password):
         token = user['api_key']
         get_connection_users().db_update(authorize.username, token)
         return jsonify(token=token)
 
-    return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
+    return make_response(response.AUTH_FAILED)
 
 
 @app.route('/api/v1.0/users/<username>')
 @token_required
 def get_user(current_user, username):
     if not current_user['admin']:
-        return jsonify({'message': 'Cannot perform that function!'})
+        return jsonify(errors.UNAUTHORIZED_REQUEST)
     user = get_connection_users().db_search_name(username)
     if not user:
         abort(errors.ERROR_STATUS)
@@ -142,7 +155,7 @@ def get_user(current_user, username):
 @token_required
 def get_users(current_user):
     if not current_user['admin']:
-        return jsonify({'message': 'Cannot perform that function!'})
+        return jsonify(errors.UNAUTHORIZED_REQUEST)
     users = get_connection_users().db_list_all()
     return Response(json.dumps(users), status=response.STATUS_OK,
                     mimetype='application/json')
@@ -152,12 +165,12 @@ def get_users(current_user):
 @token_required
 def promote_user(current_user, username):
     if not current_user['admin']:
-        return jsonify({'message': 'Cannot perform that function!'})
+        return jsonify(errors.UNAUTHORIZED_REQUEST)
     user = get_connection_users().db_get_username(username)
     if not user:
-        return jsonify({'message': 'No user found!'})
+        return jsonify(response.USER_NOT_FOUND)
     get_connection_users().db_update_admin(username, True)
-    return jsonify({'message': 'The user has been promoted!'})
+    return jsonify(message=response.USER_PROMOTED)
 
 
 @app.route('/api/v1.0/users/<username>', methods=['DELETE'])
@@ -167,7 +180,24 @@ def delete_user(username):
     if not user:
         abort(errors.ERROR_STATUS)
     get_connection_users().db_remove(username)
-    return jsonify(message="user deleted successfully")
+    return jsonify(message=response.USER_DELETED)
+
+
+@app.route('/api/v1.0/users', methods=['DELETE'])
+@token_required
+def delete_api_key(current_user):
+    api_key = request.args.get('api_key', None)
+    get_connection_users().db_remove_api_key(api_key)
+    return jsonify(message=response.API_KEY_DELETED)
+
+
+@app.route('/api/v1.0/users', methods=['PUT'])
+@token_required
+def reset_api_key(current_user):
+    username = request.args.get('username', None)
+    hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+    get_connection_users().db_reset_api_key(username, hashed_new_api_key)
+    return jsonify(message=response.API_KEY_RESET)
 
 # Route for creating workspaces
 @app.route('/api/v1.0/workspaces', methods=['POST'])
@@ -509,6 +539,7 @@ def check_workspace_empty(name) -> bool:
 
 
 if __name__ == "__main__":
+    create_admin_user()
     handler = RotatingFileHandler(LOGGER_FILE,
                                   maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)

@@ -1,5 +1,5 @@
 from typing import List
-from flask import Flask, jsonify, request, Response
+from flask import Flask, jsonify, request, Response, abort, make_response
 import subprocess
 import glob
 import os
@@ -11,8 +11,11 @@ import logging
 import re
 import uuid
 from logging.handlers import RotatingFileHandler
+import data_access_layer.UserRestDB
 import data_access_layer.RestDB
 from config import errors, response
+from werkzeug.security import generate_password_hash, check_password_hash
+from functools import wraps
 
 app = Flask(__name__)
 
@@ -26,7 +29,8 @@ with open('swagger.json', 'r') as f:
 
 WORKING_DIR = doc['working_path']
 LOGGER_FILE = doc['logger_file_name']
-DB_PATH = doc['db_path']
+WORKSPACE_DB_PATH = doc['workspace_db_path']
+USERS_DB_PATH = doc['users_db_path']
 INVENTORY_PATH = doc['inventory_path']
 LATEST_PATH = doc['linchpin_latest_file_path']
 PINFILE_JSON_PATH = doc['pinfile_json_path']
@@ -54,10 +58,96 @@ def get_connection():
         Method to create an object of subclass and create a connection
         :return : an instantiated object for class RestDB
     """
-    return data_access_layer.RestDB.RestDB(DB_PATH)
+    return data_access_layer.RestDB.RestDB(WORKSPACE_DB_PATH)
+
+
+def get_connection_users():
+    """
+        Method to create an object of subclass and create a connection
+        :return : an instantiated object for class UserRestDB
+    """
+    return data_access_layer.UserRestDB.UserRestDB(USERS_DB_PATH)
+
+
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = None
+        if 'Token' in request.headers:
+            token = request.headers['Token']
+        if not token:
+            return jsonify({'message': 'Token is missing!'})
+        try:
+            user = get_connection_users().db_get_api_key(token)
+            if user is None:
+                return jsonify({'message': 'Token is invalid!'})
+        except Exception as e:
+            return jsonify({'message': 'Token is invalid!', 'status': e})
+        return f(*args, **kwargs)
+    return decorated
+
+
+@app.route('/api/v1.0/users', methods=['POST'])
+def new_user():
+    username = request.json.get('username')
+    password = request.json.get('password')
+    api_key = str(uuid.uuid4())
+    if username is None or password is None:
+        abort(errors.ERROR_STATUS)    # missing arguments
+    if not get_connection_users().db_search_name(username) is not None:
+        abort(errors.ERROR_STATUS)    # existing user
+    hashed_password = generate_password_hash(password, method='sha256')
+    get_connection_users().db_insert(username, hashed_password, api_key)
+    return jsonify(username=username, status=response.STATUS_OK)
+
+
+@app.route('/api/v1.0/login')
+def login():
+    authorize = request.authorization
+    if not authorize or not authorize.username or not authorize.password:
+        return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
+
+    user = get_connection_users().db_get(authorize.username)
+
+    if not user:
+        return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
+
+    if check_password_hash(user['password'], authorize.password):
+        token = generate_password_hash(user['api_key'], method='sha256')
+        get_connection_users().db_update(authorize.username, token)
+        return jsonify(token=token)
+
+    return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
+
+
+@app.route('/api/v1.0/users/<username>')
+def get_user(username):
+    user = get_connection_users().db_search_name(username)
+    if not user:
+        abort(errors.ERROR_STATUS)
+    return jsonify(username=username)
+
+
+@app.route('/api/v1.0/users')
+@token_required
+def get_users():
+    users = get_connection_users().db_list_all()
+    return Response(json.dumps(users), status=response.STATUS_OK,
+                    mimetype='application/json')
+
+
+@app.route('/api/v1.0/users/<username>', methods=['DELETE'])
+@token_required
+def delete_user(username):
+    user = get_connection_users().db_search_name(username)
+    if not user:
+        abort(errors.ERROR_STATUS)
+    get_connection_users().db_remove(username)
+    return jsonify(message="user deleted successfully")
 
 # Route for creating workspaces
 @app.route('/api/v1.0/workspaces', methods=['POST'])
+@token_required
 def linchpin_init() -> Response:
     """
         POST request route for creating workspaces.
@@ -97,6 +187,7 @@ def linchpin_init() -> Response:
 
 # Route for listing all workspaces
 @app.route('/api/v1.0/workspaces', methods=['GET'])
+@token_required
 def linchpin_list_workspace() -> Response:
     """
         GET request route for listing workspaces.
@@ -106,7 +197,7 @@ def linchpin_list_workspace() -> Response:
     try:
         workspace_array = get_connection().db_list_all()
         # path specifying location of working directory inside server
-        return Response(json.dumps(workspace_array), status=200,
+        return Response(json.dumps(workspace_array), status=response.STATUS_OK,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
@@ -114,6 +205,7 @@ def linchpin_list_workspace() -> Response:
 
 # Route for listing workspaces filtered by name
 @app.route('/api/v1.0/workspaces/<name>', methods=['GET'])
+@token_required
 def linchpin_list_workspace_by_name(name) -> Response:
     """
         GET request route for listing workspaces by name
@@ -122,7 +214,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
     try:
         workspace = get_connection().db_search(name)
         # path specifying location of working directory inside server
-        return Response(json.dumps(workspace), status=200,
+        return Response(json.dumps(workspace), status=response.STATUS_OK,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
@@ -130,6 +222,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
 
 # Route for deleting workspaces by Id
 @app.route('/api/v1.0/workspaces/<identity>', methods=['DELETE'])
+@token_required
 def linchpin_delete_workspace(identity) -> Response:
     """
         DELETE request route for deleting workspaces.
@@ -186,6 +279,7 @@ def create_fetch_cmd(data, identity) -> List[str]:
 
 
 @app.route('/api/v1.0/workspaces/fetch', methods=['POST'])
+@token_required
 def linchpin_fetch_workspace() -> Response:
     """
         POST request route for fetching workspaces from a remote URL
@@ -280,6 +374,7 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
 
 
 @app.route('/api/v1.0/workspaces/up', methods=['POST'])
+@token_required
 def linchpin_up() -> Response:
     """
         POST request route for provisioning workspaces/pinFile already created
@@ -341,6 +436,7 @@ def linchpin_up() -> Response:
 
 
 @app.route('/api/v1.0/workspaces/destroy', methods=['POST'])
+@token_required
 def linchpin_destroy() -> Response:
     """
         POST request route for destroying workspaces/resources already created

@@ -69,8 +69,8 @@ def get_connection_users():
     return data_access_layer.UserRestDB.UserRestDB(USERS_DB_PATH)
 
 
-def token_required(f):
-    @wraps(f)
+def token_required(function):
+    @wraps(function)
     def decorated(*args, **kwargs):
         token = None
         if 'Token' in request.headers:
@@ -78,17 +78,20 @@ def token_required(f):
         if not token:
             return jsonify({'message': 'Token is missing!'})
         try:
-            user = get_connection_users().db_get_api_key(token)
-            if user is None:
+            current_user = get_connection_users().db_get_api_key(token)
+            if current_user is None:
                 return jsonify({'message': 'Token is invalid!'})
         except Exception as e:
             return jsonify({'message': 'Token is invalid!', 'status': e})
-        return f(*args, **kwargs)
+        return function(current_user, *args, **kwargs)
     return decorated
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
-def new_user():
+@token_required
+def new_user(current_user):
+    if not current_user['admin']:
+        return jsonify({'message': 'Cannot perform that function!'})
     username = request.json.get('username')
     password = request.json.get('password')
     api_key = str(uuid.uuid4())
@@ -97,23 +100,25 @@ def new_user():
     if not get_connection_users().db_search_name(username) is not None:
         abort(errors.ERROR_STATUS)    # existing user
     hashed_password = generate_password_hash(password, method='sha256')
-    get_connection_users().db_insert(username, hashed_password, api_key)
+    hashed_api_key = generate_password_hash(api_key, method='sha256')
+    admin = False
+    get_connection_users().db_insert(username, hashed_password, hashed_api_key, admin)
     return jsonify(username=username, status=response.STATUS_OK)
 
 
-@app.route('/api/v1.0/login')
+@app.route('/api/v1.0/users/login')
 def login():
     authorize = request.authorization
     if not authorize or not authorize.username or not authorize.password:
         return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
 
-    user = get_connection_users().db_get(authorize.username)
+    user = get_connection_users().db_get_username(authorize.username)
 
     if not user:
         return make_response('Could not verify', {'WWW-Authenticate': 'Basic realm="Login required!"'})
 
     if check_password_hash(user['password'], authorize.password):
-        token = generate_password_hash(user['api_key'], method='sha256')
+        token = user['api_key']
         get_connection_users().db_update(authorize.username, token)
         return jsonify(token=token)
 
@@ -121,19 +126,38 @@ def login():
 
 
 @app.route('/api/v1.0/users/<username>')
-def get_user(username):
+@token_required
+def get_user(current_user, username):
+    if not current_user['admin']:
+        return jsonify({'message': 'Cannot perform that function!'})
     user = get_connection_users().db_search_name(username)
     if not user:
         abort(errors.ERROR_STATUS)
-    return jsonify(username=username)
+    return jsonify(username=username,
+                   api_key=current_user['api_key'],
+                   admin=current_user['admin'])
 
 
 @app.route('/api/v1.0/users')
 @token_required
-def get_users():
+def get_users(current_user):
+    if not current_user['admin']:
+        return jsonify({'message': 'Cannot perform that function!'})
     users = get_connection_users().db_list_all()
     return Response(json.dumps(users), status=response.STATUS_OK,
                     mimetype='application/json')
+
+
+@app.route('/api/v1.0/users/<username>', methods=['PUT'])
+@token_required
+def promote_user(current_user, username):
+    if not current_user['admin']:
+        return jsonify({'message': 'Cannot perform that function!'})
+    user = get_connection_users().db_get_username(username)
+    if not user:
+        return jsonify({'message': 'No user found!'})
+    get_connection_users().db_update_admin(username, True)
+    return jsonify({'message': 'The user has been promoted!'})
 
 
 @app.route('/api/v1.0/users/<username>', methods=['DELETE'])

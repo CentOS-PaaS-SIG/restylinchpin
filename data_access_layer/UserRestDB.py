@@ -10,18 +10,20 @@ class UserRestDB(UserBaseDB):
     def __init__(self, path):
         self.db = TinyDB(path)
 
-    def db_insert(self, username, password_hash, api_key) -> None:
+    def db_insert(self, username, password_hash, api_key_hash, admin) -> None:
         """
             Inserts a workspace with id, name and status to the db
             :param username: uername for the user
             :param password_hash: hashed password for user account authentication
+            :param api_key_hash: hashed api_key for user token generation
+            :param admin: Boolean value indicating user access rights as admin user
         """
-        self.db.insert({'username': username, 'password': password_hash, 'api_key':api_key})
+        self.db.insert({'username': username, 'password': password_hash, 'api_key':api_key_hash, 'admin': admin})
 
     def db_search_name(self, username) -> List[Dict]:
         """
             Searches a workspace record in db
-            :param param: username of the user to be searched
+            :param username: username of the user to be searched
             :return: a list of records in db that match name with param username
         """
         user = Query()
@@ -34,7 +36,7 @@ class UserRestDB(UserBaseDB):
         """
         return self.db.all()
 
-    def db_get(self, username):
+    def db_get_username(self, username):
         user = Query()
         return self.db.get(user.username == username)
 
@@ -50,9 +52,8 @@ class UserRestDB(UserBaseDB):
         user = Query()
         self.db.update({'api_key': api_key}, user.username == username)
 
-    def get_api_key(self, username):
+    def db_update_admin(self, username, admin) -> None:
         user = Query()
-        if self.db.search(user.username == username):
-            return user.api_key
+        self.db.update({'admin': admin}, user.username == username)
 
 

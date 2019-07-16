@@ -16,12 +16,12 @@ from flask_swagger_ui import get_swaggerui_blueprint
 
 app = Flask(__name__)
 
+APP_DIR = os.path.dirname(os.path.realpath(__file__))
 # Reading directory path from config.yml file
-with open('config.yml', 'r') as f:
+with open(APP_DIR+'/config.yml', 'r') as f:
     config = yaml.load(f)
 
-WORKING_DIR = config.get('working_path', '/tmp/')
-
+WORKSPACE_DIR = config.get('workspace_path', '/tmp/')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
 INVENTORY_PATH = config.get('inventory_path','/dummy/inventories/*')
@@ -38,12 +38,13 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL,
     API_URL,
     config={  # Swagger UI config overrides
-        'app_name': "Test application"
+        'app_name': "restylinchpin"
     }
 )
-
+import pdb
+pdb.set_trace()
 # path navigating to current workspace directory
-WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
+WORKSPACE_PATH = os.path.normpath(app.root_path + WORKSPACE_DIR + r' ')
 
 
 def get_connection():
@@ -76,7 +77,7 @@ def linchpin_init() -> Response:
             else:
                 # Checking if workspace name contains any special characters
                 output = subprocess.Popen(["linchpin", "-w " +
-                                          WORKING_DIR + identity +
+                                          WORKSPACE_DIR + identity +
                                           "/", "init"], stdout=subprocess.PIPE)
                 get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
@@ -135,9 +136,9 @@ def linchpin_delete_workspace(identity) -> Response:
     """
     try:
         # path specifying location of working directory inside server
-        for x in os.listdir(WORKING_PATH):
+        for x in os.listdir(WORKSPACE_PATH):
             if x == identity:
-                shutil.rmtree(WORKING_PATH + "/" + x)
+                shutil.rmtree(WORKSPACE_PATH + "/" + x)
                 get_connection().db_remove(identity)
                 return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
@@ -161,7 +162,7 @@ def create_fetch_cmd(data, identity) -> List[str]:
     url = data['url']
     repo = None
     # initial list
-    cmd = ["linchpin", "-w " + WORKING_DIR + identity, "fetch"]
+    cmd = ["linchpin", "-w " + WORKSPACE_DIR + identity, "fetch"]
 
     # Check for repoType field in request,
     # Only true if it is set to web
@@ -239,7 +240,7 @@ def create_cmd_workspace(data, identity, action) -> List[str]:
         check_path = identity + pinfile_path
     else:
         check_path = identity
-    cmd = ["linchpin", "-w " + WORKING_DIR + check_path]
+    cmd = ["linchpin", "-w " + WORKSPACE_DIR + check_path]
     if 'pinfileName' in data:
         cmd.extend(("-p", data['pinfileName']))
         pinfile_name = data['pinfileName']
@@ -266,10 +267,10 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
         :return a list for the subprocess to run
     """
     pinfile_content = data['pinfile_content']
-    json_pinfile_path = WORKING_PATH + "/" + identity + PINFILE_JSON_PATH
+    json_pinfile_path = WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
     with open(json_pinfile_path, 'w') as json_data:
         json.dump(pinfile_content, json_data)
-    cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" +
+    cmd = ["linchpin", "-w " + WORKSPACE_DIR + identity + "/dummy", "-p" +
            "PinFile.json", "up"]
     if 'inventory_format' in data:
         cmd.extend(("--if", data['inventory_format']))
@@ -294,7 +295,7 @@ def linchpin_up() -> Response:
         provision_type = data['provision_type']
         if provision_type == "workspace":
             identity = data['id']
-            if not os.path.exists(WORKING_PATH + "/" + identity):
+            if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
             cmd = create_cmd_workspace(data, identity, "up")
         elif provision_type == "pinfile":
@@ -302,7 +303,7 @@ def linchpin_up() -> Response:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
                 identity = str(uuid.uuid4())
-            precmd = ["linchpin", "-w " + WORKING_DIR + identity +
+            precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             output.communicate()
@@ -313,10 +314,10 @@ def linchpin_up() -> Response:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
+        linchpin_latest_path = WORKSPACE_PATH + "/" + identity + LATEST_PATH
         with open(linchpin_latest_path, 'r') as file:
             linchpin_latest = json.load(file)
-        directory_path = glob.glob(WORKING_PATH + "/" + identity +
+        directory_path = glob.glob(WORKSPACE_PATH + "/" + identity +
                                    INVENTORY_PATH)
         latest_file = max(directory_path, key=os.path.getctime)
         with open(latest_file, 'r') as data:
@@ -373,7 +374,7 @@ def check_workspace_has_pinfile(name, pinfile_name) -> bool:
         :param pinfile_name: name of pinfile in directory
         :return a boolean value True or False
     """
-    return os.listdir(WORKING_PATH + "/" + name).__contains__(pinfile_name)
+    return os.listdir(WORKSPACE_PATH + "/" + name).__contains__(pinfile_name)
 
 
 def check_workspace_empty(name) -> bool:
@@ -382,7 +383,7 @@ def check_workspace_empty(name) -> bool:
         :param name: name of the workspace to be verified
         :return a boolean value True or False
     """
-    return os.listdir(WORKING_PATH + "/" + name) == []
+    return os.listdir(WORKSPACE_PATH + "/" + name) == []
 
 
 if __name__ == "__main__":

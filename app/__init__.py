@@ -20,9 +20,6 @@ app = Flask(__name__)
 with open('config.yml', 'r') as f:
     config = yaml.load(f)
 
-with open('swagger.json', 'r') as f:
-    jsonData = json.load(f)
-
 WORKING_DIR = config.get('working_path', '/tmp/')
 
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')

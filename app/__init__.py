@@ -1,23 +1,22 @@
-from typing import List
-from flask import Flask, jsonify, request, Response
-import subprocess
-import glob
 import os
-import yaml
-from flask_swagger_ui import get_swaggerui_blueprint
-import shutil
-import json
-import logging
 import re
+import glob
+import yaml
+import json
 import uuid
-from logging.handlers import RotatingFileHandler
+import shutil
+import logging
+import subprocess
+from typing import List
 import data_access_layer.RestDB
 from response_messages import errors, response
+from logging.handlers import RotatingFileHandler
+from flask import Flask, jsonify, request, Response
+from flask_swagger_ui import get_swaggerui_blueprint
 
 app = Flask(__name__)
 
 # Reading directory path from config.yml file
-
 with open('config.yml', 'r') as f:
     config = yaml.load(f)
 

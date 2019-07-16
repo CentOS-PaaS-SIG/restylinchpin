@@ -7,25 +7,27 @@ import uuid
 import shutil
 import logging
 import subprocess
-from typing import List
-import data_access_layer.RestDB
 from response_messages import errors, response
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, Response
 from flask_swagger_ui import get_swaggerui_blueprint
+from utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
+    create_cmd_up_pinfile, check_workspace_empty
+
 
 app = Flask(__name__)
 
 APP_DIR = os.path.dirname(os.path.realpath(__file__))
 # Reading directory path from config.yml file
-with open(APP_DIR+'/config.yml', 'r') as f:
+with open(APP_DIR + '/config.yml', 'r') as f:
     config = yaml.load(f)
 
 WORKSPACE_DIR = config.get('workspace_path', '/tmp/')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
-INVENTORY_PATH = config.get('inventory_path','/dummy/inventories/*')
-LATEST_PATH = config.get('linchpin_latest_file_path', '/dummy/resources/linchpin.latest')
+INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
+LATEST_PATH = config.get('linchpin_latest_file_path',
+                         '/dummy/resources/linchpin.latest')
 PINFILE_JSON_PATH = config.get('pinfile_json_path', '/dummy/PinFile.json')
 
 # URL for exposing Swagger UI (without trailing '/')
@@ -41,18 +43,10 @@ swaggerui_blueprint = get_swaggerui_blueprint(
         'app_name': "restylinchpin"
     }
 )
-import pdb
-pdb.set_trace()
+
 # path navigating to current workspace directory
 WORKSPACE_PATH = os.path.normpath(app.root_path + WORKSPACE_DIR + r' ')
 
-
-def get_connection():
-    """
-        Method to create an object of subclass and create a connection
-        :return : an instantiated object for class RestDB
-    """
-    return data_access_layer.RestDB.RestDB(DB_PATH)
 
 # Route for creating workspaces
 @app.route('/workspace/create', methods=['POST'])
@@ -63,15 +57,16 @@ def linchpin_init() -> Response:
         :return : response with created workspace name,
                   id, status and code
     """
+    db_con = get_connection(DB_PATH)
     try:
         data = request.json  # Get request body
         name = data["name"]
         identity = str(uuid.uuid4()) + "_" + name
         try:
-            get_connection().db_insert(identity, name,
-                                       response.WORKSPACE_REQUESTED)
+            db_con.db_insert(identity, name,
+                             response.WORKSPACE_REQUESTED)
             if not re.match("^[a-zA-Z0-9]*$", name):
-                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                db_con.db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,
                                message=errors.INVALID_NAME)
             else:
@@ -79,13 +74,13 @@ def linchpin_init() -> Response:
                 output = subprocess.Popen(["linchpin", "-w " +
                                           WORKSPACE_DIR + identity +
                                           "/", "init"], stdout=subprocess.PIPE)
-                get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+                db_con.db_update(identity, response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
                                Code=output.returncode,
                                mimetype='application/json')
         except Exception as e:
-            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            db_con.db_update(identity, response.WORKSPACE_FAILED)
             app.logger.error(e)
             return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
@@ -101,14 +96,16 @@ def linchpin_list_workspace() -> Response:
         :return : response with a list of workspaces
         from the destination set in config.py
     """
+    db_con = get_connection(DB_PATH)
     try:
-        workspace_array = get_connection().db_list_all()
+        workspace_array = db_con.db_list_all()
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace_array), status=200,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
 
 # Route for listing workspaces filtered by name
 @app.route('/workspace/list/<name>', methods=['GET'])
@@ -117,14 +114,16 @@ def linchpin_list_workspace_by_name(name) -> Response:
         GET request route for listing workspaces by name
         :return : response with a list of workspaces filtered by name
     """
+    db_con = get_connection(DB_PATH)
     try:
-        workspace = get_connection().db_search(name)
+        workspace = db_con.db_search(name)
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace), status=200,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
 
 # Route for deleting workspaces by Id
 @app.route('/workspace/delete/<identity>', methods=['DELETE'])
@@ -134,12 +133,13 @@ def linchpin_delete_workspace(identity) -> Response:
         :param : unique uuid_name assigned to the workspace
         :return : response with deleted workspace id and status
     """
+    db_con = get_connection(DB_PATH)
     try:
         # path specifying location of working directory inside server
         for x in os.listdir(WORKSPACE_PATH):
             if x == identity:
                 shutil.rmtree(WORKSPACE_PATH + "/" + x)
-                get_connection().db_remove(identity)
+                db_con.db_remove(identity)
                 return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
                                mimetype='application/json')
@@ -152,37 +152,6 @@ def linchpin_delete_workspace(identity) -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-def create_fetch_cmd(data, identity) -> List[str]:
-    """
-        Creates a list to feed the subprocess in fetch API
-        :param data: JSON data from POST requestBody
-        :param identity: unique uuid_name assigned to the workspace
-        :return a list for the subprocess to run
-    """
-    url = data['url']
-    repo = None
-    # initial list
-    cmd = ["linchpin", "-w " + WORKSPACE_DIR + identity, "fetch"]
-
-    # Check for repoType field in request,
-    # Only true if it is set to web
-    if 'repoType' in data:
-        if data['repoType'] == 'web':
-            repo = 'web'
-            cmd.append("--web")
-
-    if 'rootfolder' in data:
-        cmd.extend(("--root", data['rootfolder']))
-
-    if repo is None and 'branch' in data:
-        cmd.extend(("--branch", data['branch']))
-
-    # last item to be added in the array
-    if 'url' in data:
-        cmd.append(str(url))
-    return cmd
-
-
 @app.route('/workspace/fetch', methods=['POST'])
 def linchpin_fetch_workspace() -> Response:
     """
@@ -191,90 +160,40 @@ def linchpin_fetch_workspace() -> Response:
         "rootfolder":"/path/to/folder"}
         :return : response with fetched workspace name,id, status and code
     """
+    db_con = get_connection(DB_PATH)
     try:
         data = request.json  # Get request body
         name = data['name']
         identity = str(uuid.uuid4()) + "_" + name
         try:
-            get_connection().db_insert(identity, name,
-                                       response.WORKSPACE_REQUESTED)
-            cmd = create_fetch_cmd(data, identity)
+            db_con.db_insert(identity, name,
+                             response.WORKSPACE_REQUESTED)
+            cmd = create_fetch_cmd(data, identity, WORKSPACE_DIR)
             # Checking if workspace name contains special characters
             if not re.match("^[a-zA-Z0-9]*$", name):
-                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                db_con.db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,
                                message=errors.INVALID_NAME)
             else:
                 output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
                 output.communicate()
-                if check_workspace_empty(identity):
-                    get_connection().db_update(identity,
-                                               response.WORKSPACE_FAILED)
+                if check_workspace_empty(identity, WORKSPACE_PATH):
+                    db_con.db_update(identity,
+                                     response.WORKSPACE_FAILED)
                     return jsonify(status=response.EMPTY_WORKSPACE)
-                get_connection().db_update(identity,
-                                           response.WORKSPACE_SUCCESS)
+                db_con.db_update(identity,
+                                 response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
                                code=output.returncode,
                                mimetype='application/json')
         except Exception as e:
-            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            db_con.db_update(identity, response.WORKSPACE_FAILED)
             app.logger.error(e)
             return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_PARAMS_FETCH)
-
-
-def create_cmd_workspace(data, identity, action) -> List[str]:
-    """
-        Creates a list to feed the subprocess for provisioning/
-        destroying existing workspaces
-        :param data: JSON data from POST requestBody
-        :param identity: unique uuid_name assigned to the workspace
-        :param action: up or destroy action
-        :return a list for the subprocess to run
-    """
-    if 'pinfile_path' in data:
-        pinfile_path = data['pinfile_path']
-        check_path = identity + pinfile_path
-    else:
-        check_path = identity
-    cmd = ["linchpin", "-w " + WORKSPACE_DIR + check_path]
-    if 'pinfileName' in data:
-        cmd.extend(("-p", data['pinfileName']))
-        pinfile_name = data['pinfileName']
-    else:
-        pinfile_name = "PinFile"
-    if not check_workspace_has_pinfile(check_path, pinfile_name):
-        return jsonify(status=response.PINFILE_NOT_FOUND)
-    cmd.append(action)
-    if 'tx_id' in data:
-        cmd.extend(("-t", data['tx_id']))
-    elif 'run_id' and 'target' in data:
-        cmd.extend(("-r", data['run_id'], data['target']))
-    if 'inventory_format' in data:
-        cmd.extend(("--if", data['inventory_format']))
-    return cmd
-
-
-def create_cmd_up_pinfile(data, identity) -> List[str]:
-    """
-        Creates a list to feed the subprocess for provisioning
-        new workspaces instantiated using a pinfile
-        :param data: JSON data from POST requestBody
-        :param identity: unique uuid_name assigned to the workspace
-        :return a list for the subprocess to run
-    """
-    pinfile_content = data['pinfile_content']
-    json_pinfile_path = WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
-    with open(json_pinfile_path, 'w') as json_data:
-        json.dump(pinfile_content, json_data)
-    cmd = ["linchpin", "-w " + WORKSPACE_DIR + identity + "/dummy", "-p" +
-           "PinFile.json", "up"]
-    if 'inventory_format' in data:
-        cmd.extend(("--if", data['inventory_format']))
-    return cmd
 
 
 @app.route('/workspace/up', methods=['POST'])
@@ -290,6 +209,8 @@ def linchpin_up() -> Response:
                   contents_of_linchpin.latest_file_in_resource_folder
     """
     identity = None
+    db_con = get_connection(DB_PATH)
+
     try:
         data = request.json  # Get request body
         provision_type = data['provision_type']
@@ -297,7 +218,8 @@ def linchpin_up() -> Response:
             identity = data['id']
             if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
-            cmd = create_cmd_workspace(data, identity, "up")
+            cmd = create_cmd_workspace(data, identity, "up",
+                                       WORKSPACE_PATH, WORKSPACE_DIR)
         elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
@@ -307,9 +229,10 @@ def linchpin_up() -> Response:
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             output.communicate()
-            get_connection().db_insert_no_name(identity,
-                                               response.WORKSPACE_REQUESTED)
-            cmd = create_cmd_up_pinfile(data, identity)
+            db_con.db_insert_no_name(identity,
+                                     response.WORKSPACE_REQUESTED)
+            cmd = create_cmd_up_pinfile(data, identity, WORKSPACE_PATH,
+                                        WORKSPACE_DIR, PINFILE_JSON_PATH)
         else:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -322,7 +245,7 @@ def linchpin_up() -> Response:
         latest_file = max(directory_path, key=os.path.getctime)
         with open(latest_file, 'r') as data:
             inventory = data.read().replace('\n', ' ')
-        get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
+        db_con.db_update(identity, response.PROVISION_STATUS_SUCCESS)
         return jsonify(id=identity,
                        status=response.PROVISION_SUCCESS,
                        inventory=inventory,
@@ -333,7 +256,7 @@ def linchpin_up() -> Response:
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_UP)
     except Exception as e:
-        get_connection().db_update(identity, response.PROVISION_FAILED)
+        db_con.db_update(identity, response.PROVISION_FAILED)
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
@@ -347,13 +270,14 @@ def linchpin_destroy() -> Response:
         :return : response with destroyed workspace id and status
     """
     identity = None
+    db_con = get_connection(DB_PATH)
     try:
         data = request.json  # Get request body
         identity = data['id']
-        cmd = create_cmd_workspace(data, identity, "destroy")
+        cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_DIR)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        get_connection().db_update(identity, response.DESTROY_STATUS_SUCCESS)
+        db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)
         return jsonify(id=identity,
                        status=response.DESTROY_SUCCESS,
                        code=output.returncode,
@@ -362,28 +286,9 @@ def linchpin_destroy() -> Response:
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_DESTROY)
     except Exception as e:
-        get_connection().db_update(identity, response.DESTROY_FAILED)
+        db_con.db_update(identity, response.DESTROY_FAILED)
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
-
-
-def check_workspace_has_pinfile(name, pinfile_name) -> bool:
-    """
-        Verifies if a workspace to be provisioned contains a PinFile.json
-        :param name: name of the workspace to be verified
-        :param pinfile_name: name of pinfile in directory
-        :return a boolean value True or False
-    """
-    return os.listdir(WORKSPACE_PATH + "/" + name).__contains__(pinfile_name)
-
-
-def check_workspace_empty(name) -> bool:
-    """
-        Verifies if a workspace fetched/created is empty
-        :param name: name of the workspace to be verified
-        :return a boolean value True or False
-    """
-    return os.listdir(WORKSPACE_PATH + "/" + name) == []
 
 
 if __name__ == "__main__":

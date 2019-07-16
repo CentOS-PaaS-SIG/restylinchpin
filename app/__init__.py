@@ -12,24 +12,25 @@ import re
 import uuid
 from logging.handlers import RotatingFileHandler
 import data_access_layer.RestDB
-from config import errors, response
+from response_messages import errors, response
 
 app = Flask(__name__)
 
 # Reading directory path from config.yml file
 
 with open('config.yml', 'r') as f:
-    doc = yaml.load(f)
+    config = yaml.load(f)
 
 with open('swagger.json', 'r') as f:
     jsonData = json.load(f)
 
-WORKING_DIR = doc['working_path']
-LOGGER_FILE = doc['logger_file_name']
-DB_PATH = doc['db_path']
-INVENTORY_PATH = doc['inventory_path']
-LATEST_PATH = doc['linchpin_latest_file_path']
-PINFILE_JSON_PATH = doc['pinfile_json_path']
+WORKING_DIR = config.get('working_path', '/tmp/')
+
+LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
+DB_PATH = config.get('db_path', 'db.json')
+INVENTORY_PATH = config.get('inventory_path','/dummy/inventories/*')
+LATEST_PATH = config.get('linchpin_latest_file_path', '/dummy/resources/linchpin.latest')
+PINFILE_JSON_PATH = config.get('pinfile_json_path', '/dummy/PinFile.json')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'

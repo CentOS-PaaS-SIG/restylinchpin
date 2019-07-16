@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class UserBaseDB(ABC):
 
     @abstractmethod
-    def db_insert(self, username, password_hash, api_key, admin):
+    def db_insert(self, username, password_hash, api_key, email, admin):
         return
 
     @abstractmethod
@@ -32,14 +32,14 @@ class UserBaseDB(ABC):
         pass
 
     @abstractmethod
-    def db_update(self, username, api_key):
-        pass
-
-    @abstractmethod
     def db_update_admin(self, username, admin):
         pass
 
     @abstractmethod
     def db_reset_api_key(self, username, new_api_key):
+        pass
+
+    @abstractmethod
+    def db_update(self, username, updated_username, password_hash, email):
         pass
 

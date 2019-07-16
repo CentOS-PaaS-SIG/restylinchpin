@@ -101,12 +101,12 @@ def create_admin_user():
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
-@token_required
 def new_user(current_user):
     if not current_user['admin']:
-        return jsonify(errors.UNAUTHORIZED_REQUEST)
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     username = request.json.get('username')
     password = request.json.get('password')
+    email = request.json.get('email')
     api_key = str(uuid.uuid4())
     if username is None or password is None:
         abort(errors.ERROR_STATUS)    # missing arguments
@@ -115,8 +115,9 @@ def new_user(current_user):
     hashed_password = generate_password_hash(password, method='sha256')
     hashed_api_key = generate_password_hash(api_key, method='sha256')
     admin = False
-    get_connection_users().db_insert(username, hashed_password, hashed_api_key, admin)
-    return jsonify(username=username, admin=admin, status=response.STATUS_OK)
+    get_connection_users().db_insert(username, hashed_password, hashed_api_key, email, admin)
+    return jsonify(username=username, email=email,
+                   admin=admin, status=response.STATUS_OK)
 
 
 @app.route('/api/v1.0/login')
@@ -132,7 +133,6 @@ def login():
 
     if check_password_hash(user['password'], authorize.password):
         token = user['api_key']
-        get_connection_users().db_update(authorize.username, token)
         return jsonify(token=token)
 
     return make_response(response.AUTH_FAILED)
@@ -141,8 +141,8 @@ def login():
 @app.route('/api/v1.0/users/<username>')
 @token_required
 def get_user(current_user, username):
-    if not current_user['admin']:
-        return jsonify(errors.UNAUTHORIZED_REQUEST)
+    if not current_user['admin'] and not current_user['username'] == username:
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     user = get_connection_users().db_search_name(username)
     if not user:
         abort(errors.ERROR_STATUS)
@@ -155,17 +155,17 @@ def get_user(current_user, username):
 @token_required
 def get_users(current_user):
     if not current_user['admin']:
-        return jsonify(errors.UNAUTHORIZED_REQUEST)
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     users = get_connection_users().db_list_all()
     return Response(json.dumps(users), status=response.STATUS_OK,
                     mimetype='application/json')
 
 
-@app.route('/api/v1.0/users/<username>', methods=['PUT'])
+@app.route('/api/v1.0/users', methods=['PUT'])
 @token_required
 def promote_user(current_user, username):
     if not current_user['admin']:
-        return jsonify(errors.UNAUTHORIZED_REQUEST)
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     user = get_connection_users().db_get_username(username)
     if not user:
         return jsonify(response.USER_NOT_FOUND)
@@ -173,9 +173,36 @@ def promote_user(current_user, username):
     return jsonify(message=response.USER_PROMOTED)
 
 
+@app.route('/api/v1.0/users/<user_name>', methods=['PUT'])
+@token_required
+def update_user(current_user, user_name):
+    if not current_user['admin'] and not current_user['username'] == user_name:
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+    user = get_connection_users().db_get_username(user_name)
+    if not user:
+        return jsonify(response.USER_NOT_FOUND)
+    hashed_password = user['password']
+    email = user['email']
+    data = request.json
+    if 'username' in data:
+        username = request.json.get('username')
+    else:
+        username = user_name
+    if 'password' in data:
+        password = request.json.get('password')
+        hashed_password = generate_password_hash(password, method='sha256')
+    if 'email' in data:
+        email = request.json.get('email')
+    get_connection_users().db_update(user_name, username, hashed_password, email)
+    return jsonify(username=username, email=email, password=hashed_password,
+                   status=response.STATUS_OK)
+
+
 @app.route('/api/v1.0/users/<username>', methods=['DELETE'])
 @token_required
-def delete_user(username):
+def delete_user(current_user, username):
+    if not current_user['admin'] and not current_user['username'] == username:
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     user = get_connection_users().db_search_name(username)
     if not user:
         abort(errors.ERROR_STATUS)
@@ -187,6 +214,9 @@ def delete_user(username):
 @token_required
 def delete_api_key(current_user):
     api_key = request.args.get('api_key', None)
+    user = get_connection_users().db_get_api_key(api_key)
+    if not current_user['admin'] and not current_user['username'] == user['username']:
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     get_connection_users().db_remove_api_key(api_key)
     return jsonify(message=response.API_KEY_DELETED)
 
@@ -195,6 +225,9 @@ def delete_api_key(current_user):
 @token_required
 def reset_api_key(current_user):
     username = request.args.get('username', None)
+    user = get_connection_users().db_get_username(username)
+    if not current_user['admin'] and not current_user['password'] == user['password']:
+        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
     get_connection_users().db_reset_api_key(username, hashed_new_api_key)
     return jsonify(message=response.API_KEY_RESET)
@@ -202,7 +235,7 @@ def reset_api_key(current_user):
 # Route for creating workspaces
 @app.route('/api/v1.0/workspaces', methods=['POST'])
 @token_required
-def linchpin_init() -> Response:
+def linchpin_init(current_user) -> Response:
     """
         POST request route for creating workspaces.
         RequestBody: {"name": "workspacename"}

@@ -18,10 +18,17 @@ from utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
 app = Flask(__name__)
 
 APP_DIR = os.path.dirname(os.path.realpath(__file__))
-# Reading directory path from config.yml file
-with open(APP_DIR + '/config.yml', 'r') as f:
-    config = yaml.load(f)
 
+# Reading directory path from config.yml file
+try:
+    with open(APP_DIR + '/config.yml', 'r') as f:
+        config = yaml.load(f)
+except Exception as e:
+    config = {}
+    app.logger.error(e)
+
+
+# loads defaults when config.yml does not exists or has been removed
 WORKSPACE_DIR = config.get('workspace_path', '/tmp/')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
@@ -150,6 +157,7 @@ def linchpin_delete_workspace(identity) -> Response:
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
 
 
 @app.route('/workspace/fetch', methods=['POST'])

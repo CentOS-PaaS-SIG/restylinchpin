@@ -202,8 +202,8 @@ def linchpin_fetch_workspace() -> Response:
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_PARAMS_FETCH)
-      
-      
+
+
 @app.route('/api/v1.0/workspaces/up', methods=['POST'])
 def linchpin_up() -> Response:
     """

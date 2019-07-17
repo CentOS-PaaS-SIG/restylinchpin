@@ -59,5 +59,3 @@ class RestDB(BaseDB):
             :return: a list of all records in db
         """
         return self.db.all()
-
-

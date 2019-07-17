@@ -57,7 +57,7 @@ def get_connection():
     return data_access_layer.RestDB.RestDB(DB_PATH)
 
 # Route for creating workspaces
-@app.route('/workspace/create', methods=['POST'])
+@app.route('/api/v1.0/workspaces', methods=['POST'])
 def linchpin_init() -> Response:
     """
         POST request route for creating workspaces.
@@ -96,7 +96,7 @@ def linchpin_init() -> Response:
 
 
 # Route for listing all workspaces
-@app.route('/workspace/list', methods=['GET'])
+@app.route('/api/v1.0/workspaces', methods=['GET'])
 def linchpin_list_workspace() -> Response:
     """
         GET request route for listing workspaces.
@@ -113,7 +113,7 @@ def linchpin_list_workspace() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 # Route for listing workspaces filtered by name
-@app.route('/workspace/list/<name>', methods=['GET'])
+@app.route('/api/v1.0/workspaces/<name>', methods=['GET'])
 def linchpin_list_workspace_by_name(name) -> Response:
     """
         GET request route for listing workspaces by name
@@ -129,7 +129,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 # Route for deleting workspaces by Id
-@app.route('/workspace/delete/<identity>', methods=['DELETE'])
+@app.route('/api/v1.0/workspaces/<identity>', methods=['DELETE'])
 def linchpin_delete_workspace(identity) -> Response:
     """
         DELETE request route for deleting workspaces.
@@ -185,7 +185,7 @@ def create_fetch_cmd(data, identity) -> List[str]:
     return cmd
 
 
-@app.route('/workspace/fetch', methods=['POST'])
+@app.route('/api/v1.0/workspaces/fetch', methods=['POST'])
 def linchpin_fetch_workspace() -> Response:
     """
         POST request route for fetching workspaces from a remote URL
@@ -279,7 +279,7 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
     return cmd
 
 
-@app.route('/workspace/up', methods=['POST'])
+@app.route('/api/v1.0/workspaces/up', methods=['POST'])
 def linchpin_up() -> Response:
     """
         POST request route for provisioning workspaces/pinFile already created
@@ -340,7 +340,7 @@ def linchpin_up() -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/workspace/destroy', methods=['POST'])
+@app.route('/api/v1.0/workspaces/destroy', methods=['POST'])
 def linchpin_destroy() -> Response:
     """
         POST request route for destroying workspaces/resources already created

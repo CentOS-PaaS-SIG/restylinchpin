@@ -101,6 +101,7 @@ def create_admin_user():
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
+@token_required
 def new_user(current_user):
     if not current_user['admin']:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
@@ -248,7 +249,7 @@ def linchpin_init(current_user) -> Response:
         identity = str(uuid.uuid4()) + "_" + name
         try:
             get_connection().db_insert(identity, name,
-                                       response.WORKSPACE_REQUESTED)
+                                       response.WORKSPACE_REQUESTED, current_user['username'])
             if not re.match("^[a-zA-Z0-9]*$", name):
                 get_connection().db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,
@@ -275,14 +276,20 @@ def linchpin_init(current_user) -> Response:
 # Route for listing all workspaces
 @app.route('/api/v1.0/workspaces', methods=['GET'])
 @token_required
-def linchpin_list_workspace() -> Response:
+def linchpin_list_workspace(current_user) -> Response:
     """
         GET request route for listing workspaces.
         :return : response with a list of workspaces
         from the destination set in config.py
     """
     try:
-        workspace_array = get_connection().db_list_all()
+        admin = False
+        workspace = get_connection().db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace:
+            return jsonify(message=response.NOT_FOUND)
+        if current_user['admin']:
+            admin = True
+        workspace_array = get_connection().db_list_all(current_user['username'], admin)
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace_array), status=response.STATUS_OK,
                         mimetype='application/json')
@@ -293,13 +300,19 @@ def linchpin_list_workspace() -> Response:
 # Route for listing workspaces filtered by name
 @app.route('/api/v1.0/workspaces/<name>', methods=['GET'])
 @token_required
-def linchpin_list_workspace_by_name(name) -> Response:
+def linchpin_list_workspace_by_name(current_user, name) -> Response:
     """
         GET request route for listing workspaces by name
         :return : response with a list of workspaces filtered by name
     """
     try:
-        workspace = get_connection().db_search(name)
+        admin = False
+        workspace_owner_user = get_connection().db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace_owner_user:
+            return jsonify(message=response.NOT_FOUND)
+        if current_user['admin']:
+            admin = True
+        workspace = get_connection().db_search(name, admin, current_user['username'])
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace), status=response.STATUS_OK,
                         mimetype='application/json')
@@ -310,7 +323,7 @@ def linchpin_list_workspace_by_name(name) -> Response:
 # Route for deleting workspaces by Id
 @app.route('/api/v1.0/workspaces/<identity>', methods=['DELETE'])
 @token_required
-def linchpin_delete_workspace(identity) -> Response:
+def linchpin_delete_workspace(current_user, identity) -> Response:
     """
         DELETE request route for deleting workspaces.
         :param : unique uuid_name assigned to the workspace
@@ -318,17 +331,24 @@ def linchpin_delete_workspace(identity) -> Response:
     """
     try:
         # path specifying location of working directory inside server
+        admin = False
+        workspace_owner_user = get_connection().db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace_owner_user:
+            return jsonify(message=response.NOT_FOUND)
+        if current_user['admin']:
+            admin = True
+        else:
+            workspace = get_connection().db_search_identity(identity)
+            if not get_connection().db_search(workspace['name'], admin, current_user['username']):
+                return jsonify(response.NOT_FOUND)
         for x in os.listdir(WORKING_PATH):
             if x == identity:
                 shutil.rmtree(WORKING_PATH + "/" + x)
-                get_connection().db_remove(identity)
+                get_connection().db_remove(identity, admin, current_user['username'])
                 return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
                                mimetype='application/json')
         return jsonify(status=response.NOT_FOUND)
-    except (KeyError, ValueError, TypeError):
-        return jsonify(status=errors.ERROR_STATUS,
-                       message=errors.KEY_ERROR_NAME)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
@@ -367,7 +387,7 @@ def create_fetch_cmd(data, identity) -> List[str]:
 
 @app.route('/api/v1.0/workspaces/fetch', methods=['POST'])
 @token_required
-def linchpin_fetch_workspace() -> Response:
+def linchpin_fetch_workspace(current_user) -> Response:
     """
         POST request route for fetching workspaces from a remote URL
         RequestBody: {"name": "workspacename","url": "www.github.com/someurl",
@@ -380,7 +400,7 @@ def linchpin_fetch_workspace() -> Response:
         identity = str(uuid.uuid4()) + "_" + name
         try:
             get_connection().db_insert(identity, name,
-                                       response.WORKSPACE_REQUESTED)
+                                       response.WORKSPACE_REQUESTED, current_user['username'])
             cmd = create_fetch_cmd(data, identity)
             # Checking if workspace name contains special characters
             if not re.match("^[a-zA-Z0-9]*$", name):
@@ -462,7 +482,7 @@ def create_cmd_up_pinfile(data, identity) -> List[str]:
 
 @app.route('/api/v1.0/workspaces/up', methods=['POST'])
 @token_required
-def linchpin_up() -> Response:
+def linchpin_up(current_user) -> Response:
     """
         POST request route for provisioning workspaces/pinFile already created
         RequestBody: {"id": "workspace_id",
@@ -475,10 +495,20 @@ def linchpin_up() -> Response:
     """
     identity = None
     try:
+        admin = False
+        workspace = get_connection().db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace:
+            return jsonify(message=response.NOT_FOUND)
+        if current_user['admin']:
+            admin = True
         data = request.json  # Get request body
         provision_type = data['provision_type']
         if provision_type == "workspace":
             identity = data['id']
+            if not admin:
+                workspace = get_connection().db_search_identity(identity)
+                if not get_connection().db_search(workspace['name'], admin, current_user['username']):
+                    return jsonify(message=response.NOT_FOUND)
             if not os.path.exists(WORKING_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
             cmd = create_cmd_workspace(data, identity, "up")
@@ -492,7 +522,7 @@ def linchpin_up() -> Response:
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             output.communicate()
             get_connection().db_insert_no_name(identity,
-                                               response.WORKSPACE_REQUESTED)
+                                               response.WORKSPACE_REQUESTED, current_user['username'])
             cmd = create_cmd_up_pinfile(data, identity)
         else:
             raise ValueError
@@ -524,7 +554,7 @@ def linchpin_up() -> Response:
 
 @app.route('/api/v1.0/workspaces/destroy', methods=['POST'])
 @token_required
-def linchpin_destroy() -> Response:
+def linchpin_destroy(current_user) -> Response:
     """
         POST request route for destroying workspaces/resources already created
         or provisioned
@@ -533,8 +563,18 @@ def linchpin_destroy() -> Response:
     """
     identity = None
     try:
+        admin = False
+        workspace = get_connection().db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace:
+            return jsonify(message=response.NOT_FOUND)
+        if current_user['admin']:
+            admin = True
         data = request.json  # Get request body
         identity = data['id']
+        if not admin:
+            workspace = get_connection().db_search_identity(identity)
+            if not get_connection().db_search(workspace['name'], admin, current_user['username']):
+                return jsonify(message=response.NOT_FOUND)
         cmd = create_cmd_workspace(data, identity, "destroy")
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()

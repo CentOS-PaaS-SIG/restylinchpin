@@ -12,7 +12,9 @@ WORKSPACE_FAILED = "FAILED"
 WORKSPACE_REQUESTED = "REQUESTED"
 PROVISION_STATUS_SUCCESS = "PROVISIONED"
 PROVISION_FAILED = "FAILED PROVISIONING"
-PINFILE_NOT_FOUND = "PinFile not found. Please check that it exists or specify pinfile_path in request"
+PINFILE_NOT_FOUND = "PinFile not found."\
+                    "Please check that it exists"\
+                    "or specify pinfile_path in request"
 DESTROY_STATUS_SUCCESS = "Destroyed"
 DESTROY_FAILED = "FAILED destroy"
 STATUS_OK = "200 OK"
@@ -25,5 +27,3 @@ API_KEY_RESET = "Api key has been reset"
 AUTH_FAILED = "Invalid username or password, please try again"
 TOKEN_MISSING = "Token is missing"
 TOKEN_INVALID = "Token is invalid!"
-
-

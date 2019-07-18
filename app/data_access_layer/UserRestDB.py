@@ -1,6 +1,6 @@
 from __future__ import absolute_import
 from tinydb import TinyDB, Query
-from data_access_layer.UserBaseDB import UserBaseDB
+from app.data_access_layer.UserBaseDB import UserBaseDB
 from typing import List
 from typing import Dict
 from tinydb.operations import delete

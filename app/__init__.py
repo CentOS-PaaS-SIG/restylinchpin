@@ -1,41 +1,45 @@
-from typing import List
-from flask import Flask, jsonify, request, Response, abort, make_response
-import subprocess
-import glob
 import os
-import yaml
-from flask_swagger_ui import get_swaggerui_blueprint
-import shutil
-import json
-import logging
 import re
+import glob
+import yaml
+import json
 import uuid
+import shutil
+import logging
+import subprocess
+from app.response_messages import response, errors
 from logging.handlers import RotatingFileHandler
-import data_access_layer.UserRestDB
-import data_access_layer.RestDB
-from config import errors, response
+from flask import Flask, jsonify, request, Response, abort, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from functools import wraps
+from flask_swagger_ui import get_swaggerui_blueprint
+from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
+    create_cmd_up_pinfile, check_workspace_empty, get_connection_users
 
 app = Flask(__name__)
 
-# Reading directory path from config.yml file
+APP_DIR = os.path.dirname(os.path.realpath(__file__))
 
-with open('config.yml', 'r') as f:
-    doc = yaml.load(f)
+try:
+    with open(APP_DIR + '/config.yml', 'r') as f:
+        config = yaml.load(f)
+except Exception as e:
+    config = {}
+    app.logger.error(e)
 
-with open('swagger.json', 'r') as f:
-    jsonData = json.load(f)
 
-WORKING_DIR = doc['working_path']
-LOGGER_FILE = doc['logger_file_name']
-WORKSPACE_DB_PATH = doc['workspace_db_path']
-USERS_DB_PATH = doc['users_db_path']
-INVENTORY_PATH = doc['inventory_path']
-LATEST_PATH = doc['linchpin_latest_file_path']
-PINFILE_JSON_PATH = doc['pinfile_json_path']
-ADMIN_USERNAME = doc['admin_username']
-ADMIN_PASSWORD = doc['admin_password']
+# loads defaults when config.yml does not exists or has been removed
+WORKSPACE_DIR = config.get('workspace_path', '/tmp')
+LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
+USERS_DB_PATH = config.get('users_db_path', 'users.json')
+DB_PATH = config.get('db_path', 'db.json')
+INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
+LATEST_PATH = config.get('linchpin_latest_file_path',
+                         '/dummy/resources/linchpin.latest')
+PINFILE_JSON_PATH = config.get('pinfile_json_path', '/dummy/PinFile.json')
+ADMIN_USERNAME = config.get('admin_username', 'admin')
+ADMIN_PASSWORD = config.get('admin_password', 'password')
+ADMIN_EMAIL = config.get('admin_email', 'email')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -47,40 +51,25 @@ swaggerui_blueprint = get_swaggerui_blueprint(
     SWAGGER_URL,
     API_URL,
     config={  # Swagger UI config overrides
-        'app_name': "Test application"
+        'app_name': "restylinchpin"
     }
 )
 
 # path navigating to current workspace directory
-WORKING_PATH = os.path.normpath(app.root_path + WORKING_DIR + r' ')
-
-
-def get_connection():
-    """
-        Method to create an object of subclass and create a connection
-        :return : an instantiated object for class RestDB
-    """
-    return data_access_layer.RestDB.RestDB(WORKSPACE_DB_PATH)
-
-
-def get_connection_users():
-    """
-        Method to create an object of subclass and create a connection
-        :return : an instantiated object for class UserRestDB
-    """
-    return data_access_layer.UserRestDB.UserRestDB(USERS_DB_PATH)
+WORKSPACE_PATH = os.path.normpath(app.root_path + WORKSPACE_DIR + r' ')
 
 
 def token_required(function):
     @wraps(function)
     def decorated(*args, **kwargs):
+        db_con = get_connection_users(DB_PATH)
         token = None
         if 'Token' in request.headers:
             token = request.headers['Token']
         if not token:
             return jsonify(response.TOKEN_MISSING)
         try:
-            current_user = get_connection_users().db_get_api_key(token)
+            current_user = db_con.db_get_api_key(token)
             if current_user is None:
                 return jsonify(response.TOKEN_INVALID)
         except Exception as e:
@@ -90,19 +79,22 @@ def token_required(function):
 
 
 def create_admin_user():
+    db_con = get_connection_users(USERS_DB_PATH)
     username = ADMIN_USERNAME
     password = ADMIN_PASSWORD
-    if get_connection_users().db_get_username(username):
+    if db_con.db_get_username(username):
         return
     hashed_password = generate_password_hash(password, method='sha256')
     hashed_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+    email = ADMIN_EMAIL
     admin = True
-    get_connection_users().db_insert(username, hashed_password, hashed_api_key, admin)
+    db_con.db_insert(username, hashed_password, hashed_api_key, email, admin)
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
 @token_required
 def new_user(current_user):
+    db_con = get_connection_users(USERS_DB_PATH)
     if not current_user['admin']:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     username = request.json.get('username')
@@ -111,23 +103,24 @@ def new_user(current_user):
     api_key = str(uuid.uuid4())
     if username is None or password is None:
         abort(errors.ERROR_STATUS)    # missing arguments
-    if get_connection_users().db_get_username(username):
+    if db_con.db_get_username(username):
         return jsonify(message=response.USER_ALREADY_EXISTS)
     hashed_password = generate_password_hash(password, method='sha256')
     hashed_api_key = generate_password_hash(api_key, method='sha256')
     admin = False
-    get_connection_users().db_insert(username, hashed_password, hashed_api_key, email, admin)
+    db_con.db_insert(username, hashed_password, hashed_api_key, email, admin)
     return jsonify(username=username, email=email,
                    admin=admin, status=response.STATUS_OK)
 
 
 @app.route('/api/v1.0/login')
 def login():
+    db_con = get_connection_users(USERS_DB_PATH)
     authorize = request.authorization
     if not authorize or not authorize.username or not authorize.password:
         return make_response(response.AUTH_FAILED)
 
-    user = get_connection_users().db_get_username(authorize.username)
+    user = db_con.db_get_username(authorize.username)
 
     if not user:
         return make_response(response.AUTH_FAILED)
@@ -142,9 +135,10 @@ def login():
 @app.route('/api/v1.0/users/<username>')
 @token_required
 def get_user(current_user, username):
+    db_con = get_connection_users(USERS_DB_PATH)
     if not current_user['admin'] and not current_user['username'] == username:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = get_connection_users().db_search_name(username)
+    user = db_con.db_search_name(username)
     if not user:
         abort(errors.ERROR_STATUS)
     return jsonify(username=username,
@@ -155,9 +149,10 @@ def get_user(current_user, username):
 @app.route('/api/v1.0/users')
 @token_required
 def get_users(current_user):
+    db_con = get_connection_users(USERS_DB_PATH)
     if not current_user['admin']:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    users = get_connection_users().db_list_all()
+    users = db_con.db_list_all()
     return Response(json.dumps(users), status=response.STATUS_OK,
                     mimetype='application/json')
 
@@ -165,21 +160,23 @@ def get_users(current_user):
 @app.route('/api/v1.0/users', methods=['PUT'])
 @token_required
 def promote_user(current_user, username):
+    db_con = get_connection_users(USERS_DB_PATH)
     if not current_user['admin']:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = get_connection_users().db_get_username(username)
+    user = db_con.db_get_username(username)
     if not user:
         return jsonify(response.USER_NOT_FOUND)
-    get_connection_users().db_update_admin(username, True)
+    db_con.db_update_admin(username, True)
     return jsonify(message=response.USER_PROMOTED)
 
 
 @app.route('/api/v1.0/users/<user_name>', methods=['PUT'])
 @token_required
 def update_user(current_user, user_name):
+    db_con = get_connection_users(USERS_DB_PATH)
     if not current_user['admin'] and not current_user['username'] == user_name:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = get_connection_users().db_get_username(user_name)
+    user = db_con.db_get_username(user_name)
     if not user:
         return jsonify(response.USER_NOT_FOUND)
     hashed_password = user['password']
@@ -194,7 +191,7 @@ def update_user(current_user, user_name):
         hashed_password = generate_password_hash(password, method='sha256')
     if 'email' in data:
         email = request.json.get('email')
-    get_connection_users().db_update(user_name, username, hashed_password, email)
+    db_con.db_update(user_name, username, hashed_password, email)
     return jsonify(username=username, email=email, password=hashed_password,
                    status=response.STATUS_OK)
 
@@ -202,35 +199,38 @@ def update_user(current_user, user_name):
 @app.route('/api/v1.0/users/<username>', methods=['DELETE'])
 @token_required
 def delete_user(current_user, username):
+    db_con = get_connection_users(USERS_DB_PATH)
     if not current_user['admin'] and not current_user['username'] == username:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = get_connection_users().db_search_name(username)
+    user = db_con.db_search_name(username)
     if not user:
         abort(errors.ERROR_STATUS)
-    get_connection_users().db_remove(username)
+    db_con.db_remove(username)
     return jsonify(message=response.USER_DELETED)
 
 
 @app.route('/api/v1.0/users', methods=['DELETE'])
 @token_required
 def delete_api_key(current_user):
+    db_con = get_connection_users(USERS_DB_PATH)
     api_key = request.args.get('api_key', None)
-    user = get_connection_users().db_get_api_key(api_key)
+    user = db_con.db_get_api_key(api_key)
     if not current_user['admin'] and not current_user['username'] == user['username']:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    get_connection_users().db_remove_api_key(api_key)
+    db_con.db_remove_api_key(api_key)
     return jsonify(message=response.API_KEY_DELETED)
 
 
 @app.route('/api/v1.0/users', methods=['PUT'])
 @token_required
 def reset_api_key(current_user):
+    db_con = get_connection_users(USERS_DB_PATH)
     username = request.args.get('username', None)
-    user = get_connection_users().db_get_username(username)
+    user = db_con.db_get_username(username)
     if not current_user['admin'] and not current_user['password'] == user['password']:
         return jsonify(message=errors.UNAUTHORIZED_REQUEST)
     hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
-    get_connection_users().db_reset_api_key(username, hashed_new_api_key)
+    db_con.db_reset_api_key(username, hashed_new_api_key)
     return jsonify(message=response.API_KEY_RESET)
 
 # Route for creating workspaces
@@ -243,29 +243,31 @@ def linchpin_init(current_user) -> Response:
         :return : response with created workspace name,
                   id, status and code
     """
+    db_con = get_connection(DB_PATH)
     try:
         data = request.json  # Get request body
         name = data["name"]
         identity = str(uuid.uuid4()) + "_" + name
         try:
-            get_connection().db_insert(identity, name,
-                                       response.WORKSPACE_REQUESTED, current_user['username'])
+            db_con.db_insert(identity, name,
+                             response.WORKSPACE_REQUESTED, current_user['username'])
+
             if not re.match("^[a-zA-Z0-9]*$", name):
-                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                db_con.db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,
                                message=errors.INVALID_NAME)
             else:
                 # Checking if workspace name contains any special characters
                 output = subprocess.Popen(["linchpin", "-w " +
-                                          WORKING_DIR + identity +
+                                          WORKSPACE_DIR + identity +
                                           "/", "init"], stdout=subprocess.PIPE)
-                get_connection().db_update(identity, response.WORKSPACE_SUCCESS)
+                db_con.db_update(identity, response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
                                Code=output.returncode,
                                mimetype='application/json')
         except Exception as e:
-            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            db_con.db_update(identity, response.WORKSPACE_FAILED)
             app.logger.error(e)
             return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
@@ -282,20 +284,22 @@ def linchpin_list_workspace(current_user) -> Response:
         :return : response with a list of workspaces
         from the destination set in config.py
     """
+    db_con = get_connection(DB_PATH)
     try:
         admin = False
-        workspace = get_connection().db_search_username(current_user['username'])
+        workspace = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         if current_user['admin']:
             admin = True
-        workspace_array = get_connection().db_list_all(current_user['username'], admin)
+        workspace_array = db_con.db_list_all(current_user['username'], admin)
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace_array), status=response.STATUS_OK,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
 
 # Route for listing workspaces filtered by name
 @app.route('/api/v1.0/workspaces/<name>', methods=['GET'])
@@ -305,20 +309,22 @@ def linchpin_list_workspace_by_name(current_user, name) -> Response:
         GET request route for listing workspaces by name
         :return : response with a list of workspaces filtered by name
     """
+    db_con = get_connection(DB_PATH)
     try:
         admin = False
-        workspace_owner_user = get_connection().db_search_username(current_user['username'])
+        workspace_owner_user = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
         if current_user['admin']:
             admin = True
-        workspace = get_connection().db_search(name, admin, current_user['username'])
+        workspace = db_con.db_search(name, admin, current_user['username'])
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace), status=response.STATUS_OK,
                         mimetype='application/json')
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
 
 # Route for deleting workspaces by Id
 @app.route('/api/v1.0/workspaces/<identity>', methods=['DELETE'])
@@ -329,22 +335,23 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
         :param : unique uuid_name assigned to the workspace
         :return : response with deleted workspace id and status
     """
+    db_con = get_connection(DB_PATH)
     try:
         # path specifying location of working directory inside server
         admin = False
-        workspace_owner_user = get_connection().db_search_username(current_user['username'])
+        workspace_owner_user = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
         if current_user['admin']:
             admin = True
         else:
-            workspace = get_connection().db_search_identity(identity)
-            if not get_connection().db_search(workspace['name'], admin, current_user['username']):
+            workspace = db_con.db_search_identity(identity)
+            if not db_con.db_search(workspace['name'], admin, current_user['username']):
                 return jsonify(response.NOT_FOUND)
-        for x in os.listdir(WORKING_PATH):
+        for x in os.listdir(WORKSPACE_PATH):
             if x == identity:
-                shutil.rmtree(WORKING_PATH + "/" + x)
-                get_connection().db_remove(identity, admin, current_user['username'])
+                shutil.rmtree(WORKSPACE_PATH + "/" + x)
+                db_con.db_remove(identity, admin, current_user['username'])
                 return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
                                mimetype='application/json')
@@ -352,37 +359,6 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
-
-
-def create_fetch_cmd(data, identity) -> List[str]:
-    """
-        Creates a list to feed the subprocess in fetch API
-        :param data: JSON data from POST requestBody
-        :param identity: unique uuid_name assigned to the workspace
-        :return a list for the subprocess to run
-    """
-    url = data['url']
-    repo = None
-    # initial list
-    cmd = ["linchpin", "-w " + WORKING_DIR + identity, "fetch"]
-
-    # Check for repoType field in request,
-    # Only true if it is set to web
-    if 'repoType' in data:
-        if data['repoType'] == 'web':
-            repo = 'web'
-            cmd.append("--web")
-
-    if 'rootfolder' in data:
-        cmd.extend(("--root", data['rootfolder']))
-
-    if repo is None and 'branch' in data:
-        cmd.extend(("--branch", data['branch']))
-
-    # last item to be added in the array
-    if 'url' in data:
-        cmd.append(str(url))
-    return cmd
 
 
 @app.route('/api/v1.0/workspaces/fetch', methods=['POST'])
@@ -394,90 +370,40 @@ def linchpin_fetch_workspace(current_user) -> Response:
         "rootfolder":"/path/to/folder"}
         :return : response with fetched workspace name,id, status and code
     """
+    db_con = get_connection(DB_PATH)
     try:
         data = request.json  # Get request body
         name = data['name']
         identity = str(uuid.uuid4()) + "_" + name
         try:
-            get_connection().db_insert(identity, name,
-                                       response.WORKSPACE_REQUESTED, current_user['username'])
-            cmd = create_fetch_cmd(data, identity)
+            db_con.db_insert(identity, name,
+                             response.WORKSPACE_REQUESTED, current_user['username'])
+            cmd = create_fetch_cmd(data, identity, WORKSPACE_DIR)
             # Checking if workspace name contains special characters
             if not re.match("^[a-zA-Z0-9]*$", name):
-                get_connection().db_update(identity, response.WORKSPACE_FAILED)
+                db_con.db_update(identity, response.WORKSPACE_FAILED)
                 return jsonify(status=errors.ERROR_STATUS,
                                message=errors.INVALID_NAME)
             else:
                 output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
                 output.communicate()
-                if check_workspace_empty(identity):
-                    get_connection().db_update(identity,
-                                               response.WORKSPACE_FAILED)
+                if check_workspace_empty(identity, WORKSPACE_PATH):
+                    db_con.db_update(identity,
+                                     response.WORKSPACE_FAILED)
                     return jsonify(status=response.EMPTY_WORKSPACE)
-                get_connection().db_update(identity,
-                                           response.WORKSPACE_SUCCESS)
+                db_con.db_update(identity,
+                                 response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
                                code=output.returncode,
                                mimetype='application/json')
         except Exception as e:
-            get_connection().db_update(identity, response.WORKSPACE_FAILED)
+            db_con.db_update(identity, response.WORKSPACE_FAILED)
             app.logger.error(e)
             return jsonify(status=errors.ERROR_STATUS, message=str(e))
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_PARAMS_FETCH)
-
-
-def create_cmd_workspace(data, identity, action) -> List[str]:
-    """
-        Creates a list to feed the subprocess for provisioning/
-        destroying existing workspaces
-        :param data: JSON data from POST requestBody
-        :param identity: unique uuid_name assigned to the workspace
-        :param action: up or destroy action
-        :return a list for the subprocess to run
-    """
-    if 'pinfile_path' in data:
-        pinfile_path = data['pinfile_path']
-        check_path = identity + pinfile_path
-    else:
-        check_path = identity
-    cmd = ["linchpin", "-w " + WORKING_DIR + check_path]
-    if 'pinfileName' in data:
-        cmd.extend(("-p", data['pinfileName']))
-        pinfile_name = data['pinfileName']
-    else:
-        pinfile_name = "PinFile"
-    if not check_workspace_has_pinfile(check_path, pinfile_name):
-        return jsonify(status=response.PINFILE_NOT_FOUND)
-    cmd.append(action)
-    if 'tx_id' in data:
-        cmd.extend(("-t", data['tx_id']))
-    elif 'run_id' and 'target' in data:
-        cmd.extend(("-r", data['run_id'], data['target']))
-    if 'inventory_format' in data:
-        cmd.extend(("--if", data['inventory_format']))
-    return cmd
-
-
-def create_cmd_up_pinfile(data, identity) -> List[str]:
-    """
-        Creates a list to feed the subprocess for provisioning
-        new workspaces instantiated using a pinfile
-        :param data: JSON data from POST requestBody
-        :param identity: unique uuid_name assigned to the workspace
-        :return a list for the subprocess to run
-    """
-    pinfile_content = data['pinfile_content']
-    json_pinfile_path = WORKING_PATH + "/" + identity + PINFILE_JSON_PATH
-    with open(json_pinfile_path, 'w') as json_data:
-        json.dump(pinfile_content, json_data)
-    cmd = ["linchpin", "-w " + WORKING_DIR + identity + "/dummy", "-p" +
-           "PinFile.json", "up"]
-    if 'inventory_format' in data:
-        cmd.extend(("--if", data['inventory_format']))
-    return cmd
 
 
 @app.route('/api/v1.0/workspaces/up', methods=['POST'])
@@ -494,9 +420,10 @@ def linchpin_up(current_user) -> Response:
                   contents_of_linchpin.latest_file_in_resource_folder
     """
     identity = None
+    db_con = get_connection(DB_PATH)
     try:
         admin = False
-        workspace = get_connection().db_search_username(current_user['username'])
+        workspace = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         if current_user['admin']:
@@ -506,37 +433,40 @@ def linchpin_up(current_user) -> Response:
         if provision_type == "workspace":
             identity = data['id']
             if not admin:
-                workspace = get_connection().db_search_identity(identity)
-                if not get_connection().db_search(workspace['name'], admin, current_user['username']):
+                workspace = db_con.db_search_identity(identity)
+                if not db_con.db_search(workspace['name'], admin, current_user['username']):
                     return jsonify(message=response.NOT_FOUND)
-            if not os.path.exists(WORKING_PATH + "/" + identity):
+            if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
-            cmd = create_cmd_workspace(data, identity, "up")
+            cmd = create_cmd_workspace(data, identity, "up",
+                                       WORKSPACE_PATH, WORKSPACE_DIR)
         elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
                 identity = str(uuid.uuid4())
-            precmd = ["linchpin", "-w " + WORKING_DIR + identity +
+            precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
             output.communicate()
-            get_connection().db_insert_no_name(identity,
-                                               response.WORKSPACE_REQUESTED, current_user['username'])
-            cmd = create_cmd_up_pinfile(data, identity)
+            db_con.db_insert_no_name(identity,
+                                     response.WORKSPACE_REQUESTED,
+                                     current_user['username'])
+            cmd = create_cmd_up_pinfile(data, identity, WORKSPACE_PATH,
+                                        WORKSPACE_DIR, PINFILE_JSON_PATH)
         else:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        linchpin_latest_path = WORKING_PATH + "/" + identity + LATEST_PATH
+        linchpin_latest_path = WORKSPACE_PATH + "/" + identity + LATEST_PATH
         with open(linchpin_latest_path, 'r') as file:
             linchpin_latest = json.load(file)
-        directory_path = glob.glob(WORKING_PATH + "/" + identity +
+        directory_path = glob.glob(WORKSPACE_PATH + "/" + identity +
                                    INVENTORY_PATH)
         latest_file = max(directory_path, key=os.path.getctime)
         with open(latest_file, 'r') as data:
             inventory = data.read().replace('\n', ' ')
-        get_connection().db_update(identity, response.PROVISION_STATUS_SUCCESS)
+        db_con.db_update(identity, response.PROVISION_STATUS_SUCCESS)
         return jsonify(id=identity,
                        status=response.PROVISION_SUCCESS,
                        inventory=inventory,
@@ -547,7 +477,7 @@ def linchpin_up(current_user) -> Response:
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_UP)
     except Exception as e:
-        get_connection().db_update(identity, response.PROVISION_FAILED)
+        db_con.db_update(identity, response.PROVISION_FAILED)
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
@@ -562,9 +492,10 @@ def linchpin_destroy(current_user) -> Response:
         :return : response with destroyed workspace id and status
     """
     identity = None
+    db_con = get_connection(DB_PATH)
     try:
         admin = False
-        workspace = get_connection().db_search_username(current_user['username'])
+        workspace = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         if current_user['admin']:
@@ -572,13 +503,13 @@ def linchpin_destroy(current_user) -> Response:
         data = request.json  # Get request body
         identity = data['id']
         if not admin:
-            workspace = get_connection().db_search_identity(identity)
-            if not get_connection().db_search(workspace['name'], admin, current_user['username']):
+            workspace = db_con.db_search_identity(identity)
+            if not db_con.db_search(workspace['name'], admin, current_user['username']):
                 return jsonify(message=response.NOT_FOUND)
-        cmd = create_cmd_workspace(data, identity, "destroy")
+        cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH, WORKSPACE_DIR)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        get_connection().db_update(identity, response.DESTROY_STATUS_SUCCESS)
+        db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)
         return jsonify(id=identity,
                        status=response.DESTROY_SUCCESS,
                        code=output.returncode,
@@ -587,28 +518,9 @@ def linchpin_destroy(current_user) -> Response:
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR_DESTROY)
     except Exception as e:
-        get_connection().db_update(identity, response.DESTROY_FAILED)
+        db_con.db_update(identity, response.DESTROY_FAILED)
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
-
-
-def check_workspace_has_pinfile(name, pinfile_name) -> bool:
-    """
-        Verifies if a workspace to be provisioned contains a PinFile.json
-        :param name: name of the workspace to be verified
-        :param pinfile_name: name of pinfile in directory
-        :return a boolean value True or False
-    """
-    return os.listdir(WORKING_PATH + "/" + name).__contains__(pinfile_name)
-
-
-def check_workspace_empty(name) -> bool:
-    """
-        Verifies if a workspace fetched/created is empty
-        :param name: name of the workspace to be verified
-        :return a boolean value True or False
-    """
-    return os.listdir(WORKING_PATH + "/" + name) == []
 
 
 if __name__ == "__main__":

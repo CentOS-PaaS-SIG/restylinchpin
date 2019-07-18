@@ -1,5 +1,6 @@
 from __future__ import absolute_import
 from tinydb import TinyDB, Query, where
+from tinydb.operations import delete
 from data_access_layer.BaseDB import BaseDB
 from typing import List
 from typing import Dict
@@ -87,3 +88,5 @@ class RestDB(BaseDB):
         else:
             workspace = Query()
             return self.db.search(workspace.username == username)
+
+

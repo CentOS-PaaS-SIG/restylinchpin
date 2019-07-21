@@ -11,10 +11,11 @@ from app.response_messages import response, errors
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, Response, abort, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
-from functools import wraps
 from flask_swagger_ui import get_swaggerui_blueprint
+from functools import wraps
 from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
-    create_cmd_up_pinfile, check_workspace_empty, get_connection_users
+    create_cmd_up_pinfile, check_workspace_empty, get_connection_users, \
+    create_admin_user
 
 app = Flask(__name__)
 
@@ -23,9 +24,9 @@ APP_DIR = os.path.dirname(os.path.realpath(__file__))
 try:
     with open(APP_DIR + '/config.yml', 'r') as f:
         config = yaml.load(f)
-except Exception as e:
+except Exception as x:
     config = {}
-    app.logger.error(e)
+    app.logger.error(x)
 
 
 # loads defaults when config.yml does not exists or has been removed
@@ -62,7 +63,7 @@ WORKSPACE_PATH = os.path.normpath(app.root_path + WORKSPACE_DIR + r' ')
 def token_required(function):
     @wraps(function)
     def decorated(*args, **kwargs):
-        db_con = get_connection_users(DB_PATH)
+        db_con = get_connection_users(USERS_DB_PATH)
         token = None
         if 'Token' in request.headers:
             token = request.headers['Token']
@@ -73,165 +74,196 @@ def token_required(function):
             if current_user is None:
                 return jsonify(response.TOKEN_INVALID)
         except Exception as e:
-            return jsonify(message=response.TOKEN_INVALID, statu=e)
+            return jsonify(message=response.TOKEN_INVALID, status=e)
         return function(current_user, *args, **kwargs)
     return decorated
-
-
-def create_admin_user():
-    db_con = get_connection_users(USERS_DB_PATH)
-    username = ADMIN_USERNAME
-    password = ADMIN_PASSWORD
-    if db_con.db_get_username(username):
-        return
-    hashed_password = generate_password_hash(password, method='sha256')
-    hashed_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
-    email = ADMIN_EMAIL
-    admin = True
-    db_con.db_insert(username, hashed_password, hashed_api_key, email, admin)
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
 @token_required
 def new_user(current_user):
     db_con = get_connection_users(USERS_DB_PATH)
-    if not current_user['admin']:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    username = request.json.get('username')
-    password = request.json.get('password')
-    email = request.json.get('email')
-    api_key = str(uuid.uuid4())
-    if username is None or password is None:
-        abort(errors.ERROR_STATUS)    # missing arguments
-    if db_con.db_get_username(username):
-        return jsonify(message=response.USER_ALREADY_EXISTS)
-    hashed_password = generate_password_hash(password, method='sha256')
-    hashed_api_key = generate_password_hash(api_key, method='sha256')
-    admin = False
-    db_con.db_insert(username, hashed_password, hashed_api_key, email, admin)
-    return jsonify(username=username, email=email,
-                   admin=admin, status=response.STATUS_OK)
+    try:
+        if not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        username = request.json.get('username')
+        password = request.json.get('password')
+        email = request.json.get('email')
+        api_key = str(uuid.uuid4())
+        if username is None or password is None:
+            abort(errors.ERROR_STATUS)    # missing arguments
+        if db_con.db_get_username(username):
+            return jsonify(message=response.USER_ALREADY_EXISTS)
+        hashed_password = generate_password_hash(password, method='sha256')
+        hashed_api_key = generate_password_hash(api_key, method='sha256')
+        admin = False
+        db_con.db_insert(username, hashed_password, hashed_api_key, email, admin)
+        return jsonify(username=username, email=email,
+                       admin=admin, status=response.STATUS_OK)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/login')
 def login():
     db_con = get_connection_users(USERS_DB_PATH)
-    authorize = request.authorization
-    if not authorize or not authorize.username or not authorize.password:
+    try:
+        authorize = request.authorization
+        if not authorize or not authorize.username or not authorize.password:
+            return make_response(response.AUTH_FAILED)
+
+        user = db_con.db_get_username(authorize.username)
+
+        if not user:
+            return make_response(response.AUTH_FAILED)
+
+        if check_password_hash(user['password'], authorize.password):
+            token = user['api_key']
+            return jsonify(token=token)
         return make_response(response.AUTH_FAILED)
-
-    user = db_con.db_get_username(authorize.username)
-
-    if not user:
-        return make_response(response.AUTH_FAILED)
-
-    if check_password_hash(user['password'], authorize.password):
-        token = user['api_key']
-        return jsonify(token=token)
-
-    return make_response(response.AUTH_FAILED)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users/<username>')
 @token_required
 def get_user(current_user, username):
     db_con = get_connection_users(USERS_DB_PATH)
-    if not current_user['admin'] and not current_user['username'] == username:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = db_con.db_search_name(username)
-    if not user:
-        abort(errors.ERROR_STATUS)
-    return jsonify(username=username,
-                   api_key=current_user['api_key'],
-                   admin=current_user['admin'])
+    try:
+        if not current_user['admin'] and not current_user['username'] == username:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        user = db_con.db_search_name(username)
+        if not user:
+            abort(errors.ERROR_STATUS)
+        return jsonify(username=username,
+                       api_key=current_user['api_key'],
+                       admin=current_user['admin'])
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users')
 @token_required
 def get_users(current_user):
     db_con = get_connection_users(USERS_DB_PATH)
-    if not current_user['admin']:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    users = db_con.db_list_all()
-    return Response(json.dumps(users), status=response.STATUS_OK,
-                    mimetype='application/json')
+    try:
+        if not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        users = db_con.db_list_all()
+        return Response(json.dumps(users), status=response.STATUS_OK,
+                        mimetype='application/json')
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users', methods=['PUT'])
 @token_required
 def promote_user(current_user, username):
     db_con = get_connection_users(USERS_DB_PATH)
-    if not current_user['admin']:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = db_con.db_get_username(username)
-    if not user:
-        return jsonify(response.USER_NOT_FOUND)
-    db_con.db_update_admin(username, True)
-    return jsonify(message=response.USER_PROMOTED)
+    try:
+        if not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        user = db_con.db_get_username(username)
+        if not user:
+            return jsonify(response.USER_NOT_FOUND)
+        db_con.db_update_admin(username, True)
+        return jsonify(message=response.USER_PROMOTED)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users/<user_name>', methods=['PUT'])
 @token_required
 def update_user(current_user, user_name):
     db_con = get_connection_users(USERS_DB_PATH)
-    if not current_user['admin'] and not current_user['username'] == user_name:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = db_con.db_get_username(user_name)
-    if not user:
-        return jsonify(response.USER_NOT_FOUND)
-    hashed_password = user['password']
-    email = user['email']
-    data = request.json
-    if 'username' in data:
-        username = request.json.get('username')
-    else:
-        username = user_name
-    if 'password' in data:
-        password = request.json.get('password')
-        hashed_password = generate_password_hash(password, method='sha256')
-    if 'email' in data:
-        email = request.json.get('email')
-    db_con.db_update(user_name, username, hashed_password, email)
-    return jsonify(username=username, email=email, password=hashed_password,
-                   status=response.STATUS_OK)
+    try:
+        if not current_user['admin'] and not current_user['username'] == user_name:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        user = db_con.db_get_username(user_name)
+        if not user:
+            return jsonify(response.USER_NOT_FOUND)
+        hashed_password = user['password']
+        email = user['email']
+        data = request.json
+        if 'username' in data:
+            username = request.json.get('username')
+        else:
+            username = user_name
+        if 'password' in data:
+            password = request.json.get('password')
+            hashed_password = generate_password_hash(password, method='sha256')
+        if 'email' in data:
+            email = request.json.get('email')
+        db_con.db_update(user_name, username, hashed_password, email)
+        return jsonify(username=username, email=email, password=hashed_password,
+                       status=response.STATUS_OK)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users/<username>', methods=['DELETE'])
 @token_required
 def delete_user(current_user, username):
     db_con = get_connection_users(USERS_DB_PATH)
-    if not current_user['admin'] and not current_user['username'] == username:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    user = db_con.db_search_name(username)
-    if not user:
-        abort(errors.ERROR_STATUS)
-    db_con.db_remove(username)
-    return jsonify(message=response.USER_DELETED)
+    try:
+        if not current_user['admin'] and not current_user['username'] == username:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        user = db_con.db_search_name(username)
+        if not user:
+            abort(errors.ERROR_STATUS)
+        db_con.db_remove(username)
+        return jsonify(message=response.USER_DELETED)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users', methods=['DELETE'])
 @token_required
 def delete_api_key(current_user):
     db_con = get_connection_users(USERS_DB_PATH)
-    api_key = request.args.get('api_key', None)
-    user = db_con.db_get_api_key(api_key)
-    if not current_user['admin'] and not current_user['username'] == user['username']:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    db_con.db_remove_api_key(api_key)
-    return jsonify(message=response.API_KEY_DELETED)
+    try:
+        api_key = request.args.get('api_key', None)
+        user = db_con.db_get_api_key(api_key)
+        if not current_user['admin'] and not current_user['username'] == user['username']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        db_con.db_remove_api_key(api_key)
+        return jsonify(message=response.API_KEY_DELETED)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
 @app.route('/api/v1.0/users', methods=['PUT'])
 @token_required
 def reset_api_key(current_user):
     db_con = get_connection_users(USERS_DB_PATH)
-    username = request.args.get('username', None)
-    user = db_con.db_get_username(username)
-    if not current_user['admin'] and not current_user['password'] == user['password']:
-        return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-    hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
-    db_con.db_reset_api_key(username, hashed_new_api_key)
-    return jsonify(message=response.API_KEY_RESET)
+    try:
+        username = request.args.get('username', None)
+        user = db_con.db_get_username(username)
+        if not current_user['admin'] and not current_user['password'] == user['password']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+        db_con.db_reset_api_key(username, hashed_new_api_key)
+        return jsonify(message=response.API_KEY_RESET)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 # Route for creating workspaces
 @app.route('/api/v1.0/workspaces', methods=['POST'])
@@ -475,7 +507,7 @@ def linchpin_up(current_user) -> Response:
                        mimetype='application/json')
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
-                       message=errors.KEY_ERROR_UP)
+                       message=errors.KEY_ERROR)
     except Exception as e:
         db_con.db_update(identity, response.PROVISION_FAILED)
         app.logger.error(e)
@@ -524,7 +556,7 @@ def linchpin_destroy(current_user) -> Response:
 
 
 if __name__ == "__main__":
-    create_admin_user()
+    create_admin_user(USERS_DB_PATH, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_EMAIL)
     handler = RotatingFileHandler(LOGGER_FILE,
                                   maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)

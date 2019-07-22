@@ -36,13 +36,15 @@ def create_admin_user(users_db_path, admin_username, admin_password, admin_email
     hashed_password = generate_password_hash(admin_password, method='sha256')
     hashed_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
     admin = True
-    db_con.db_insert(admin_username, hashed_password, hashed_api_key, admin_email, admin)
+    db_con.db_insert(admin_username, hashed_password, hashed_api_key,
+                     admin_email, admin)
 
 
 def create_fetch_cmd(data, identity, workspace_dir) -> List[str]:
     """
         Creates a list to feed the subprocess in fetch API
         :param data: JSON data from POST requestBody
+        :param workspace_dir: Path of current workspace
         :param identity: unique uuid_name assigned to the workspace
         :return a list for the subprocess to run
     """

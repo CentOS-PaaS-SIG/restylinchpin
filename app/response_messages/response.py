@@ -31,4 +31,3 @@ MISSING_API_KEY = "please provide the api key in request route in " \
                        "the format route?api_key=value"
 MISSING_USERNAME = "please provide the username in request route in " \
                        "the format route?username=value"
-

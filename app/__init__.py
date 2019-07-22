@@ -237,7 +237,8 @@ def reset_api_key(username):
         hashed_new_api_key = \
             generate_password_hash(str(uuid.uuid4()), method='sha256')
         db_con.db_reset_api_key(username, hashed_new_api_key)
-        return jsonify(message=response.API_KEY_RESET, api_key=hashed_new_api_key)
+        return jsonify(message=response.API_KEY_RESET,
+                       api_key=hashed_new_api_key)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
@@ -289,11 +290,13 @@ def update_user(current_user, user_name):
             username = user_name
         if 'password' in data:
             password = request.json.get('password')
-            hashed_password = generate_password_hash(password, method='sha256')
+            hashed_password = generate_password_hash(password,
+                                                     method='sha256')
         if 'email' in data:
             email = request.json.get('email')
         db_con.db_update(user_name, username, hashed_password, email)
-        return jsonify(username=username, email=email, password=hashed_password,
+        return jsonify(username=username, email=email,
+                       password=hashed_password,
                        status=response.STATUS_OK)
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
@@ -342,7 +345,8 @@ def linchpin_init(current_user) -> Response:
         identity = str(uuid.uuid4()) + "_" + name
         try:
             db_con.db_insert(identity, name,
-                             response.WORKSPACE_REQUESTED, current_user['username'])
+                             response.WORKSPACE_REQUESTED,
+                             current_user['username'])
 
             if not re.match("^[a-zA-Z0-9]*$", name):
                 db_con.db_update(identity, response.WORKSPACE_FAILED)
@@ -378,13 +382,11 @@ def linchpin_list_workspace(current_user) -> Response:
     """
     db_con = get_connection(DB_PATH)
     try:
-        admin = False
         workspace = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
-        if current_user['admin']:
-            admin = True
-        workspace_array = db_con.db_list_all(current_user['username'], admin)
+        workspace_array = db_con.db_list_all(current_user['username'],
+                                             current_user['admin'])
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace_array), status=response.STATUS_OK,
                         mimetype='application/json')
@@ -403,13 +405,11 @@ def linchpin_list_workspace_by_name(current_user, name) -> Response:
     """
     db_con = get_connection(DB_PATH)
     try:
-        admin = False
         workspace_owner_user = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
-        if current_user['admin']:
-            admin = True
-        workspace = db_con.db_search(name, admin, current_user['username'])
+        workspace = db_con.db_search(name, current_user['admin'],
+                                     current_user['username'])
         # path specifying location of working directory inside server
         return Response(json.dumps(workspace), status=response.STATUS_OK,
                         mimetype='application/json')
@@ -430,20 +430,19 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
     db_con = get_connection(DB_PATH)
     try:
         # path specifying location of working directory inside server
-        admin = False
         workspace_owner_user = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
-        if current_user['admin']:
-            admin = True
-        else:
+        if not current_user['admin']:
             workspace = db_con.db_search_identity(identity)
-            if not db_con.db_search(workspace['name'], admin, current_user['username']):
+            if not db_con.db_search(workspace['name'], current_user['admin'],
+                                    current_user['username']):
                 return jsonify(response.NOT_FOUND)
-        for x in os.listdir(WORKSPACE_PATH):
-            if x == identity:
-                shutil.rmtree(WORKSPACE_PATH + "/" + x)
-                db_con.db_remove(identity, admin, current_user['username'])
+        for w in os.listdir(WORKSPACE_PATH):
+            if w == identity:
+                shutil.rmtree(WORKSPACE_PATH + "/" + w)
+                db_con.db_remove(identity, current_user['admin'],
+                                 current_user['username'])
                 return jsonify(id=identity,
                                status=response.DELETE_SUCCESS,
                                mimetype='application/json')
@@ -469,7 +468,8 @@ def linchpin_fetch_workspace(current_user) -> Response:
         identity = str(uuid.uuid4()) + "_" + name
         try:
             db_con.db_insert(identity, name,
-                             response.WORKSPACE_REQUESTED, current_user['username'])
+                             response.WORKSPACE_REQUESTED,
+                             current_user['username'])
             cmd = create_fetch_cmd(data, identity, WORKSPACE_DIR)
             # Checking if workspace name contains special characters
             if not re.match("^[a-zA-Z0-9]*$", name):
@@ -515,19 +515,18 @@ def linchpin_up(current_user) -> Response:
     identity = None
     db_con = get_connection(DB_PATH)
     try:
-        admin = False
         workspace = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
-        if current_user['admin']:
-            admin = True
         data = request.json  # Get request body
         provision_type = data['provision_type']
         if provision_type == "workspace":
             identity = data['id']
-            if not admin:
+            if not current_user['admin']:
                 workspace = db_con.db_search_identity(identity)
-                if not db_con.db_search(workspace['name'], admin, current_user['username']):
+                if not db_con.db_search(workspace['name'],
+                                        current_user['admin'],
+                                        current_user['username']):
                     return jsonify(message=response.NOT_FOUND)
             if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
@@ -587,19 +586,18 @@ def linchpin_destroy(current_user) -> Response:
     identity = None
     db_con = get_connection(DB_PATH)
     try:
-        admin = False
         workspace = db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
-        if current_user['admin']:
-            admin = True
         data = request.json  # Get request body
         identity = data['id']
-        if not admin:
+        if not current_user['admin']:
             workspace = db_con.db_search_identity(identity)
-            if not db_con.db_search(workspace['name'], admin, current_user['username']):
+            if not db_con.db_search(workspace['name'], current_user['admin'],
+                                    current_user['username']):
                 return jsonify(message=response.NOT_FOUND)
-        cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH, WORKSPACE_DIR)
+        cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH,
+                                   WORKSPACE_DIR)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
         db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)

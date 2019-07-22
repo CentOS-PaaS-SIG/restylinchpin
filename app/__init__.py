@@ -129,12 +129,9 @@ def login():
         authorize = request.authorization
         if not authorize or not authorize.username or not authorize.password:
             return make_response(response.AUTH_FAILED)
-
         user = db_con.db_get_username(authorize.username)
-
         if not user:
             return make_response(response.AUTH_FAILED)
-
         if check_password_hash(user['password'], authorize.password):
             api_key = user['api_key']
             return jsonify(api_key=api_key)
@@ -164,7 +161,7 @@ def get_user(current_user, username):
             abort(errors.ERROR_STATUS)
         return jsonify(username=username,
                        api_key=current_user['api_key'],
-                       email= current_user['email'],
+                       email=current_user['email'],
                        admin=current_user['admin'])
     except Exception as e:
         app.logger.error(e)
@@ -219,15 +216,20 @@ def reset_api_key():
     """
          PUT request route for resetting a user's API key
          Request args are accepted as /api/v1.0/users?username=value
+         Authentication is done using basic auth username, password
          :return : response with success message and new api_key value
     """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
+        authorize = request.authorization
         username = request.args.get('username')
         user = db_con.db_get_username(username)
         if not user:
             return jsonify(message=response.MISSING_USERNAME)
-        if not user['admin'] and not user['password'] == user['password']:
+        if not authorize or not authorize.username == user['username'] or \
+                not authorize.password == user['password'] and \
+                not authorize.username == ADMIN_USERNAME \
+                or not authorize.password == ADMIN_PASSWORD:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
         db_con.db_reset_api_key(username, hashed_new_api_key)

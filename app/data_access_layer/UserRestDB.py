@@ -11,23 +11,28 @@ class UserRestDB(UserBaseDB):
     def __init__(self, path):
         self.db = TinyDB(path)
 
-    def db_insert(self, username, password_hash, api_key_hash, email, admin) -> None:
+    def db_insert(self, username, password_hash, api_key_hash,
+                  email, admin) -> None:
         """
             Inserts a workspace with id, name and status to the db
             :param username: username for the user
-            :param password_hash: hashed password for user account authentication
+            :param password_hash: hashed password for user account
+             authentication
             :param api_key_hash: hashed api_key for user token generation
-            :param admin: Boolean value indicating user access rights as admin user
+            :param admin: Boolean value indicating user access rights as
+             admin user
             :param email: User email
         """
-        self.db.insert({'username': username, 'password': password_hash, 'api_key': api_key_hash,
+        self.db.insert({'username': username, 'password': password_hash,
+                        'api_key': api_key_hash,
                         'email': email, 'admin': admin})
 
     def db_search_name(self, username) -> List[Dict]:
         """
             Searches a workspace record in db
             :param username: username of the user to be searched
-            :return: a list of records in db that match name with param username
+            :return: a list of records in db that match name with
+            param username
         """
         user = Query()
         return self.db.search(user.username == username)
@@ -81,7 +86,8 @@ class UserRestDB(UserBaseDB):
 
         """
         user = Query()
-        self.db.update({'api_key': new_api_key}, user.username == username)
+        self.db.update({'api_key': new_api_key},
+                       user.username == username)
 
     def db_update_admin(self, username, admin) -> None:
         """
@@ -92,14 +98,17 @@ class UserRestDB(UserBaseDB):
         user = Query()
         self.db.update({'admin': admin}, user.username == username)
 
-    def db_update(self, username,  updated_username, password_hash, email) -> None:
+    def db_update(self, username, updated_username, password_hash,
+                  email) -> None:
         """
             Updates a user's username, password, email params
             :param username: username of the user record to be updated
             :param updated_username: username for the user
-            :param password_hash: hashed password for user account authentication
+            :param password_hash: hashed password for user account
+            authentication
             :param email: User email
         """
         user = Query()
-        self.db.update({'username': updated_username, 'password': password_hash,
+        self.db.update({'username': updated_username,
+                        'password': password_hash,
                         'email': email}, user.username == username)

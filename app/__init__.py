@@ -405,7 +405,8 @@ def linchpin_list_workspace_by_name(current_user, name) -> Response:
     """
     db_con = get_connection(DB_PATH)
     try:
-        workspace_owner_user = db_con.db_search_username(current_user['username'])
+        workspace_owner_user = \
+            db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
         workspace = db_con.db_search(name, current_user['admin'],
@@ -430,7 +431,8 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
     db_con = get_connection(DB_PATH)
     try:
         # path specifying location of working directory inside server
-        workspace_owner_user = db_con.db_search_username(current_user['username'])
+        workspace_owner_user =\
+            db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
         if not current_user['admin']:
@@ -615,7 +617,8 @@ def linchpin_destroy(current_user) -> Response:
 
 
 if __name__ == "__main__":
-    create_admin_user(USERS_DB_PATH, ADMIN_USERNAME, ADMIN_PASSWORD, ADMIN_EMAIL)
+    create_admin_user(USERS_DB_PATH, ADMIN_USERNAME,
+                      ADMIN_PASSWORD, ADMIN_EMAIL)
     handler = RotatingFileHandler(LOGGER_FILE,
                                   maxBytes=10000, backupCount=1)
     handler.setLevel(logging.INFO)

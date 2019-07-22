@@ -25,7 +25,8 @@ def get_connection_users(users_db_path):
     return UserRestDB.UserRestDB(users_db_path)
 
 
-def create_admin_user(users_db_path, admin_username, admin_password, admin_email):
+def create_admin_user(users_db_path, admin_username, admin_password,
+                      admin_email):
     """
         Method to create an admin user by default when app runs
         :return : an admin user record in db
@@ -93,7 +94,8 @@ def create_cmd_workspace(data, identity, action,
         pinfile_name = data['pinfileName']
     else:
         pinfile_name = "PinFile"
-    if not check_workspace_has_pinfile(check_path, pinfile_name, workspace_path):
+    if not check_workspace_has_pinfile(check_path, pinfile_name,
+                                       workspace_path):
         return jsonify(status=response.PINFILE_NOT_FOUND)
     cmd.append(action)
     if 'tx_id' in data:

@@ -39,33 +39,63 @@ class UserRestDB(UserBaseDB):
         """
         return self.db.all()
 
-    def db_get_username(self, username):
+    def db_get_username(self, username) -> List[Dict]:
+        """
+            Gets a user record that matches the username
+            :param username: username of the user record to be searched
+            :return: a matching record in db
+        """
         user = Query()
         return self.db.get(user.username == username)
 
-    def db_get_api_key(self, api_key):
+    def db_get_api_key(self, api_key) -> List[Dict]:
+        """
+            Gets a user record that matches the api_key
+            :param api_key: api_key to be matched
+            :return: a matching record in db
+        """
         user = Query()
         return self.db.get(user.api_key == api_key)
 
     def db_remove(self, username) -> None:
+        """
+            Removes the user record that matches the username
+            :param username: username of the user record
+        """
         user = Query()
         self.db.remove(user.username == username)
 
     def db_remove_api_key(self, api_key) -> None:
+        """
+            Removes the api_key field from user record
+            :param api_key: api_key to be deleted
+        """
         user = Query()
         self.db.update(delete('api_key'), user.api_key == api_key)
 
     def db_reset_api_key(self, username, new_api_key) -> None:
+        """
+            Resets the api_key field in user record matching username
+            :param new_api_key: new value of api_key
+            :param username: username of the user record to be matched
+
+        """
         user = Query()
         self.db.update({'api_key': new_api_key}, user.username == username)
 
     def db_update_admin(self, username, admin) -> None:
+        """
+            Updates the admin value of a user record
+            :param username: username of the user record to be matched
+            :param admin: boolean value to be updated, set to true
+        """
         user = Query()
         self.db.update({'admin': admin}, user.username == username)
 
     def db_update(self, username,  updated_username, password_hash, email) -> None:
         """
-            Inserts a workspace with id, name and status to the db
+            Updates a user's username, password, email params
+            :param username: username of the user record to be updated
             :param updated_username: username for the user
             :param password_hash: hashed password for user account authentication
             :param email: User email

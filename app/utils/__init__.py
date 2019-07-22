@@ -26,6 +26,10 @@ def get_connection_users(users_db_path):
 
 
 def create_admin_user(users_db_path, admin_username, admin_password, admin_email):
+    """
+        Method to create an admin user by default when app runs
+        :return : an admin user record in db
+    """
     db_con = get_connection_users(users_db_path)
     if db_con.db_get_username(admin_username):
         return

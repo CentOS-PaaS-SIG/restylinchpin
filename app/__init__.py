@@ -60,28 +60,38 @@ swaggerui_blueprint = get_swaggerui_blueprint(
 WORKSPACE_PATH = os.path.normpath(app.root_path + WORKSPACE_DIR + r' ')
 
 
-def token_required(function):
+def auth_required(function):
     @wraps(function)
     def decorated(*args, **kwargs):
+        """
+            Method to verify api_key before making each request
+            :return : returns successful route if success else
+                        api-key invalid message
+        """
         db_con = get_connection_users(USERS_DB_PATH)
-        token = None
-        if 'Token' in request.headers:
-            token = request.headers['Token']
-        if not token:
-            return jsonify(response.TOKEN_MISSING)
+        api_key = None
+        if 'api_key' in request.headers:
+            api_key = request.headers['api_key']
+        if not api_key:
+            return jsonify(response.API_KEY_MISSING)
         try:
-            current_user = db_con.db_get_api_key(token)
+            current_user = db_con.db_get_api_key(api_key)
             if current_user is None:
-                return jsonify(response.TOKEN_INVALID)
+                return jsonify(response.API_KEY_INVALID)
         except Exception as e:
-            return jsonify(message=response.TOKEN_INVALID, status=e)
+            return jsonify(message=response.API_KEY_INVALID, status=e)
         return function(current_user, *args, **kwargs)
     return decorated
 
 
 @app.route('/api/v1.0/users', methods=['POST'])
-@token_required
+@auth_required
 def new_user(current_user):
+    """
+        POST request route for creating users.
+        :return : response with created username,
+                    email, admin status.
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         if not current_user['admin']:
@@ -110,6 +120,10 @@ def new_user(current_user):
 
 @app.route('/api/v1.0/login')
 def login():
+    """
+        GET request route for user login
+        :return : response with API KEY to be used for making request
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         authorize = request.authorization
@@ -122,8 +136,8 @@ def login():
             return make_response(response.AUTH_FAILED)
 
         if check_password_hash(user['password'], authorize.password):
-            token = user['api_key']
-            return jsonify(token=token)
+            api_key = user['api_key']
+            return jsonify(api_key=api_key)
         return make_response(response.AUTH_FAILED)
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
@@ -134,8 +148,13 @@ def login():
 
 
 @app.route('/api/v1.0/users/<username>')
-@token_required
+@auth_required
 def get_user(current_user, username):
+    """
+        GET request route for retrieving user details
+        :return : response with user's username, api_key,
+                    email, admin status.
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         if not current_user['admin'] and not current_user['username'] == username:
@@ -145,6 +164,7 @@ def get_user(current_user, username):
             abort(errors.ERROR_STATUS)
         return jsonify(username=username,
                        api_key=current_user['api_key'],
+                       email= current_user['email'],
                        admin=current_user['admin'])
     except Exception as e:
         app.logger.error(e)
@@ -152,8 +172,13 @@ def get_user(current_user, username):
 
 
 @app.route('/api/v1.0/users')
-@token_required
+@auth_required
 def get_users(current_user):
+    """
+        GET request route for retrieving all users
+        :return : response with list of all users
+                  present in db.
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         if not current_user['admin']:
@@ -166,9 +191,59 @@ def get_users(current_user):
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
+@app.route('/api/v1.0/users', methods=['DELETE'])
+@auth_required
+def delete_api_key(current_user):
+    """
+        DELETE request route for deleting a user's API key
+        Request args are accepted as /api/v1.0/users?api_key=value
+        :return : response with success message
+    """
+    db_con = get_connection_users(USERS_DB_PATH)
+    try:
+        api_key = request.args.get('api_key')
+        user = db_con.db_get_api_key(api_key)
+        if not user:
+            return jsonify(message=response.MISSING_API_KEY)
+        if not current_user['admin'] and not current_user['username'] == user['username']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        db_con.db_remove_api_key(api_key)
+        return jsonify(message=response.API_KEY_DELETED)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
 @app.route('/api/v1.0/users', methods=['PUT'])
-@token_required
+def reset_api_key():
+    """
+         PUT request route for resetting a user's API key
+         Request args are accepted as /api/v1.0/users?username=value
+         :return : response with success message and new api_key value
+    """
+    db_con = get_connection_users(USERS_DB_PATH)
+    try:
+        username = request.args.get('username')
+        user = db_con.db_get_username(username)
+        if not user:
+            return jsonify(message=response.MISSING_USERNAME)
+        if not user['admin'] and not user['password'] == user['password']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+        db_con.db_reset_api_key(username, hashed_new_api_key)
+        return jsonify(message=response.API_KEY_RESET, api_key=hashed_new_api_key)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/users/<username>/promote', methods=['PUT'])
+@auth_required
 def promote_user(current_user, username):
+    """
+        PUT request route for promoting a user to admin status
+        :return : response with success message.
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         if not current_user['admin']:
@@ -184,8 +259,13 @@ def promote_user(current_user, username):
 
 
 @app.route('/api/v1.0/users/<user_name>', methods=['PUT'])
-@token_required
+@auth_required
 def update_user(current_user, user_name):
+    """
+        PUT request route for updating a user's details
+        :return : response with a list of fields updated
+                  for user.
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         if not current_user['admin'] and not current_user['username'] == user_name:
@@ -217,8 +297,12 @@ def update_user(current_user, user_name):
 
 
 @app.route('/api/v1.0/users/<username>', methods=['DELETE'])
-@token_required
+@auth_required
 def delete_user(current_user, username):
+    """
+        DELETE request route for deleting a user with given username
+        :return : response with success message
+    """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         if not current_user['admin'] and not current_user['username'] == username:
@@ -233,41 +317,9 @@ def delete_user(current_user, username):
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/api/v1.0/users', methods=['DELETE'])
-@token_required
-def delete_api_key(current_user):
-    db_con = get_connection_users(USERS_DB_PATH)
-    try:
-        api_key = request.args.get('api_key', None)
-        user = db_con.db_get_api_key(api_key)
-        if not current_user['admin'] and not current_user['username'] == user['username']:
-            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-        db_con.db_remove_api_key(api_key)
-        return jsonify(message=response.API_KEY_DELETED)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
-
-
-@app.route('/api/v1.0/users', methods=['PUT'])
-@token_required
-def reset_api_key(current_user):
-    db_con = get_connection_users(USERS_DB_PATH)
-    try:
-        username = request.args.get('username', None)
-        user = db_con.db_get_username(username)
-        if not current_user['admin'] and not current_user['password'] == user['password']:
-            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-        hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
-        db_con.db_reset_api_key(username, hashed_new_api_key)
-        return jsonify(message=response.API_KEY_RESET)
-    except Exception as e:
-        app.logger.error(e)
-        return jsonify(status=errors.ERROR_STATUS, message=str(e))
-
 # Route for creating workspaces
 @app.route('/api/v1.0/workspaces', methods=['POST'])
-@token_required
+@auth_required
 def linchpin_init(current_user) -> Response:
     """
         POST request route for creating workspaces.
@@ -309,7 +361,7 @@ def linchpin_init(current_user) -> Response:
 
 # Route for listing all workspaces
 @app.route('/api/v1.0/workspaces', methods=['GET'])
-@token_required
+@auth_required
 def linchpin_list_workspace(current_user) -> Response:
     """
         GET request route for listing workspaces.
@@ -335,7 +387,7 @@ def linchpin_list_workspace(current_user) -> Response:
 
 # Route for listing workspaces filtered by name
 @app.route('/api/v1.0/workspaces/<name>', methods=['GET'])
-@token_required
+@auth_required
 def linchpin_list_workspace_by_name(current_user, name) -> Response:
     """
         GET request route for listing workspaces by name
@@ -360,7 +412,7 @@ def linchpin_list_workspace_by_name(current_user, name) -> Response:
 
 # Route for deleting workspaces by Id
 @app.route('/api/v1.0/workspaces/<identity>', methods=['DELETE'])
-@token_required
+@auth_required
 def linchpin_delete_workspace(current_user, identity) -> Response:
     """
         DELETE request route for deleting workspaces.
@@ -394,7 +446,7 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
 
 
 @app.route('/api/v1.0/workspaces/fetch', methods=['POST'])
-@token_required
+@auth_required
 def linchpin_fetch_workspace(current_user) -> Response:
     """
         POST request route for fetching workspaces from a remote URL
@@ -439,7 +491,7 @@ def linchpin_fetch_workspace(current_user) -> Response:
 
 
 @app.route('/api/v1.0/workspaces/up', methods=['POST'])
-@token_required
+@auth_required
 def linchpin_up(current_user) -> Response:
     """
         POST request route for provisioning workspaces/pinFile already created
@@ -515,7 +567,7 @@ def linchpin_up(current_user) -> Response:
 
 
 @app.route('/api/v1.0/workspaces/destroy', methods=['POST'])
-@token_required
+@auth_required
 def linchpin_destroy(current_user) -> Response:
     """
         POST request route for destroying workspaces/resources already created

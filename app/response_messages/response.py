@@ -25,5 +25,10 @@ USER_PROMOTED = "User has been promoted as admin user"
 API_KEY_DELETED = "Api key is deleted"
 API_KEY_RESET = "Api key has been reset"
 AUTH_FAILED = "Invalid username or password, please try again"
-TOKEN_MISSING = "Token is missing"
-TOKEN_INVALID = "Token is invalid!"
+API_KEY_MISSING = "API key is missing"
+API_KEY_INVALID = "API key is invalid!"
+MISSING_API_KEY = "please provide the api key in request route in " \
+                       "the format route?api_key=value"
+MISSING_USERNAME = "please provide the username in request route in " \
+                       "the format route?username=value"
+

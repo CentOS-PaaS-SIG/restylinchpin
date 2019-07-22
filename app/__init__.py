@@ -107,7 +107,8 @@ def new_user(current_user):
         hashed_password = generate_password_hash(password, method='sha256')
         hashed_api_key = generate_password_hash(api_key, method='sha256')
         admin = False
-        db_con.db_insert(username, hashed_password, hashed_api_key, email, admin)
+        db_con.db_insert(username, hashed_password,
+                         hashed_api_key, email, admin)
         return jsonify(username=username, email=email,
                        admin=admin, status=response.STATUS_OK)
     except (KeyError, ValueError, TypeError):
@@ -127,7 +128,8 @@ def login():
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         authorize = request.authorization
-        if not authorize or not authorize.username or not authorize.password:
+        if not authorize or not authorize.username \
+                or not authorize.password:
             return make_response(response.AUTH_FAILED)
         user = db_con.db_get_username(authorize.username)
         if not user:
@@ -154,7 +156,8 @@ def get_user(current_user, username):
     """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
-        if not current_user['admin'] and not current_user['username'] == username:
+        if not current_user['admin'] and \
+                not current_user['username'] == username:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         user = db_con.db_search_name(username)
         if not user:
@@ -202,7 +205,8 @@ def delete_api_key(current_user):
         user = db_con.db_get_api_key(api_key)
         if not user:
             return jsonify(message=response.MISSING_API_KEY)
-        if not current_user['admin'] and not current_user['username'] == user['username']:
+        if not current_user['admin'] and not \
+                current_user['username'] == user['username']:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         db_con.db_remove_api_key(api_key)
         return jsonify(message=response.API_KEY_DELETED)
@@ -211,10 +215,10 @@ def delete_api_key(current_user):
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/api/v1.0/users', methods=['PUT'])
-def reset_api_key():
+@app.route('/api/v1.0/users/<username>/reset', methods=['POST'])
+def reset_api_key(username):
     """
-         PUT request route for resetting a user's API key
+         POST request route for resetting/adding a user's API key
          Request args are accepted as /api/v1.0/users?username=value
          Authentication is done using basic auth username, password
          :return : response with success message and new api_key value
@@ -222,7 +226,6 @@ def reset_api_key():
     db_con = get_connection_users(USERS_DB_PATH)
     try:
         authorize = request.authorization
-        username = request.args.get('username')
         user = db_con.db_get_username(username)
         if not user:
             return jsonify(message=response.MISSING_USERNAME)
@@ -231,7 +234,8 @@ def reset_api_key():
                 not authorize.username == ADMIN_USERNAME \
                 or not authorize.password == ADMIN_PASSWORD:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-        hashed_new_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+        hashed_new_api_key = \
+            generate_password_hash(str(uuid.uuid4()), method='sha256')
         db_con.db_reset_api_key(username, hashed_new_api_key)
         return jsonify(message=response.API_KEY_RESET, api_key=hashed_new_api_key)
     except Exception as e:
@@ -270,7 +274,8 @@ def update_user(current_user, user_name):
     """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
-        if not current_user['admin'] and not current_user['username'] == user_name:
+        if not current_user['admin'] and \
+                not current_user['username'] == user_name:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         user = db_con.db_get_username(user_name)
         if not user:
@@ -307,7 +312,8 @@ def delete_user(current_user, username):
     """
     db_con = get_connection_users(USERS_DB_PATH)
     try:
-        if not current_user['admin'] and not current_user['username'] == username:
+        if not current_user['admin'] and \
+                not current_user['username'] == username:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         user = db_con.db_search_name(username)
         if not user:
@@ -496,7 +502,8 @@ def linchpin_fetch_workspace(current_user) -> Response:
 @auth_required
 def linchpin_up(current_user) -> Response:
     """
-        POST request route for provisioning workspaces/pinFile already created
+        POST request route for provisioning workspaces/pinFile already
+        created
         RequestBody: {"id": "workspace_id",
                     provision_type: "workspace",
                     --> value can be either pinfile or workspace

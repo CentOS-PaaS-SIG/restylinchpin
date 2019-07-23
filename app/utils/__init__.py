@@ -89,9 +89,9 @@ def create_cmd_workspace(data, identity, action,
     else:
         check_path = identity
     cmd = ["linchpin", "-w " + workspace_dir + check_path]
-    if 'pinfileName' in data:
-        cmd.extend(("-p", data['pinfileName']))
-        pinfile_name = data['pinfileName']
+    if 'pinfile_name' in data:
+        cmd.extend(("-p", data['pinfile_name']))
+        pinfile_name = data['pinfile_name']
     else:
         pinfile_name = "PinFile"
     if not check_workspace_has_pinfile(check_path, pinfile_name,

@@ -17,12 +17,12 @@ def get_connection(db_path):
     return RestDB.RestDB(db_path)
 
 
-def get_connection_users(users_db_path):
+def get_connection_users(db_path):
     """
         Method to create an object of subclass and create a connection
         :return : an instantiated object for class UserRestDB
     """
-    return UserRestDB.UserRestDB(users_db_path)
+    return UserRestDB.UserRestDB(db_path)
 
 
 def create_admin_user(users_db_path, admin_username, admin_password,

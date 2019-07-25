@@ -30,7 +30,7 @@ except Exception as x:
 
 
 # loads defaults when config.yml does not exists or has been removed
-WORKSPACE_DIR = config.get('workspace_path', '/')
+WORKSPACE_DIR = config.get('workspace_path', '/tmp')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
 INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')

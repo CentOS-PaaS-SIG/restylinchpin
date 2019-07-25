@@ -32,7 +32,7 @@ class RestDB(BaseDB):
             :param username: username of the user creating the workspace
         """
         self.table.insert({'id': str(identity), 'status': status,
-                        'username': username})
+                           'username': username})
 
     def db_remove(self, identity, admin, username) -> None:
         """
@@ -73,7 +73,7 @@ class RestDB(BaseDB):
             return self.table.search(workspace.name == name)
         else:
             return self.table.search((workspace.name == name) &
-                                  (workspace.username == username))
+                                     (workspace.username == username))
 
     def db_search_username(self, username) -> List[Dict]:
         """

@@ -688,7 +688,8 @@ def get_linchpin_latest(current_user, identity) -> Response:
         else:
             check_path = "/"
         linchpin_latest_directory = WORKSPACE_PATH + "/" + identity + check_path
-        if not os.listdir(linchpin_latest_directory).__contains__(LINCHPIN_LATEST_NAME):
+        if not os.listdir(linchpin_latest_directory).\
+                __contains__(LINCHPIN_LATEST_NAME):
             return jsonify(message=response.LINCHPIN_LATEST_NOT_FOUND)
         linchpin_latest_path = linchpin_latest_directory + LINCHPIN_LATEST_NAME
         with open(linchpin_latest_path, 'r') as file:

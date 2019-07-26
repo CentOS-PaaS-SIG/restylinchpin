@@ -3,7 +3,7 @@
 workspace_path: /tmp
 # name or path of logger file
 logger_file_name: restylinchpin.log
-# path to tinydb source file
+# path to workspace tinydb source file
 db_path: db.json
 # folder where the inventories are stored
 inventory_path: /dummy/inventories/*
@@ -11,3 +11,7 @@ inventory_path: /dummy/inventories/*
 linchpin_latest_file_path: /dummy/resources/linchpin.latest
 # path to Pinfile for dummy workspace
 pinfile_json_path: /dummy/PinFile.json
+#details for admin user login
+admin_username: admin
+admin_password: password
+admin_email: admin@xyz

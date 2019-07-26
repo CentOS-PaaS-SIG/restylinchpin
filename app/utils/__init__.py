@@ -1,9 +1,12 @@
 import os
 import json
-from typing import List
-import data_access_layer.RestDB
-from response_messages import response
+import uuid
+from app.data_access_layer import RestDB
+from app.data_access_layer import UserRestDB
+from app.response_messages import response
 from flask import jsonify
+from typing import List
+from werkzeug.security import generate_password_hash
 
 
 def get_connection(db_path):
@@ -11,13 +14,38 @@ def get_connection(db_path):
         Method to create an object of subclass and create a connection
         :return : an instantiated object for class RestDB
     """
-    return data_access_layer.RestDB.RestDB(db_path)
+    return RestDB.RestDB(db_path)
+
+
+def get_connection_users(db_path):
+    """
+        Method to create an object of subclass and create a connection
+        :return : an instantiated object for class UserRestDB
+    """
+    return UserRestDB.UserRestDB(db_path)
+
+
+def create_admin_user(users_db_path, admin_username, admin_password,
+                      admin_email):
+    """
+        Method to create an admin user by default when app runs
+        :return : an admin user record in db
+    """
+    db_con = get_connection_users(users_db_path)
+    if db_con.db_get_username(admin_username):
+        return
+    hashed_password = generate_password_hash(admin_password, method='sha256')
+    hashed_api_key = generate_password_hash(str(uuid.uuid4()), method='sha256')
+    admin = True
+    db_con.db_insert(admin_username, hashed_password, hashed_api_key,
+                     admin_email, admin)
 
 
 def create_fetch_cmd(data, identity, workspace_dir) -> List[str]:
     """
         Creates a list to feed the subprocess in fetch API
         :param data: JSON data from POST requestBody
+        :param workspace_dir: Path of current workspace
         :param identity: unique uuid_name assigned to the workspace
         :return a list for the subprocess to run
     """
@@ -66,8 +94,8 @@ def create_cmd_workspace(data, identity, action,
         pinfile_name = data['pinfileName']
     else:
         pinfile_name = "PinFile"
-    if not check_workspace_has_pinfile(check_path,
-                                       pinfile_name, workspace_path):
+    if not check_workspace_has_pinfile(check_path, pinfile_name,
+                                       workspace_path):
         return jsonify(status=response.PINFILE_NOT_FOUND)
     cmd.append(action)
     if 'tx_id' in data:

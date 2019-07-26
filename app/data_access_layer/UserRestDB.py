@@ -10,6 +10,7 @@ class UserRestDB(UserBaseDB):
 
     def __init__(self, path):
         self.db = TinyDB(path)
+        self.table = self.db.table('Users')
 
     def db_insert(self, username, password_hash, api_key_hash,
                   email, admin) -> None:
@@ -23,9 +24,9 @@ class UserRestDB(UserBaseDB):
              admin user
             :param email: User email
         """
-        self.db.insert({'username': username, 'password': password_hash,
-                        'api_key': api_key_hash,
-                        'email': email, 'admin': admin})
+        self.table.insert({'username': username, 'password': password_hash,
+                           'api_key': api_key_hash,
+                           'email': email, 'admin': admin})
 
     def db_search_name(self, username) -> List[Dict]:
         """
@@ -35,14 +36,14 @@ class UserRestDB(UserBaseDB):
             param username
         """
         user = Query()
-        return self.db.search(user.username == username)
+        return self.table.search(user.username == username)
 
     def db_list_all(self) -> List[Dict]:
         """
             Lists all user records in database
             :return: a list of all records in db
         """
-        return self.db.all()
+        return self.table.all()
 
     def db_get_username(self, username) -> List[Dict]:
         """
@@ -51,7 +52,7 @@ class UserRestDB(UserBaseDB):
             :return: a matching record in db
         """
         user = Query()
-        return self.db.get(user.username == username)
+        return self.table.get(user.username == username)
 
     def db_get_api_key(self, api_key) -> List[Dict]:
         """
@@ -60,7 +61,7 @@ class UserRestDB(UserBaseDB):
             :return: a matching record in db
         """
         user = Query()
-        return self.db.get(user.api_key == api_key)
+        return self.table.get(user.api_key == api_key)
 
     def db_remove(self, username) -> None:
         """
@@ -68,7 +69,7 @@ class UserRestDB(UserBaseDB):
             :param username: username of the user record
         """
         user = Query()
-        self.db.remove(user.username == username)
+        self.table.remove(user.username == username)
 
     def db_remove_api_key(self, api_key) -> None:
         """
@@ -76,7 +77,7 @@ class UserRestDB(UserBaseDB):
             :param api_key: api_key to be deleted
         """
         user = Query()
-        self.db.update(delete('api_key'), user.api_key == api_key)
+        self.table.update(delete('api_key'), user.api_key == api_key)
 
     def db_reset_api_key(self, username, new_api_key) -> None:
         """
@@ -86,8 +87,8 @@ class UserRestDB(UserBaseDB):
 
         """
         user = Query()
-        self.db.update({'api_key': new_api_key},
-                       user.username == username)
+        self.table.update({'api_key': new_api_key},
+                          user.username == username)
 
     def db_update_admin(self, username, admin) -> None:
         """
@@ -96,7 +97,7 @@ class UserRestDB(UserBaseDB):
             :param admin: boolean value to be updated, set to true
         """
         user = Query()
-        self.db.update({'admin': admin}, user.username == username)
+        self.table.update({'admin': admin}, user.username == username)
 
     def db_update(self, username, updated_username, password_hash,
                   email) -> None:
@@ -109,6 +110,6 @@ class UserRestDB(UserBaseDB):
             :param email: User email
         """
         user = Query()
-        self.db.update({'username': updated_username,
-                        'password': password_hash,
-                        'email': email}, user.username == username)
+        self.table.update({'username': updated_username,
+                           'password': password_hash,
+                           'email': email}, user.username == username)

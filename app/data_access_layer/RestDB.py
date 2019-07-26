@@ -9,6 +9,7 @@ class RestDB(BaseDB):
 
     def __init__(self, path):
         self.db = TinyDB(path)
+        self.table = self.db.table('Workspaces')
 
     def db_insert(self, identity, name, status, username) -> None:
         """
@@ -19,8 +20,8 @@ class RestDB(BaseDB):
             :param status: field specifying workspace creation inserted in db
             :param username: username of the user creating the workspace
         """
-        self.db.insert({'id': str(identity), 'name': name,
-                        'status': status, 'username': username})
+        self.table.insert({'id': str(identity), 'name': name,
+                           'status': status, 'username': username})
 
     def db_insert_no_name(self, identity, status, username) -> None:
         """
@@ -30,8 +31,8 @@ class RestDB(BaseDB):
             :param status: field specifying workspace creation inserted in db
             :param username: username of the user creating the workspace
         """
-        self.db.insert({'id': str(identity), 'status': status,
-                        'username': username})
+        self.table.insert({'id': str(identity), 'status': status,
+                           'username': username})
 
     def db_remove(self, identity, admin, username) -> None:
         """
@@ -56,7 +57,7 @@ class RestDB(BaseDB):
             :param status: field specifying workspace creation inserted in db
         """
         workspace = Query()
-        self.db.update({'status': status}, workspace.id == identity)
+        self.table.update({'status': status}, workspace.id == identity)
 
     def db_search(self, name, admin, username) -> List[Dict]:
         """
@@ -69,10 +70,10 @@ class RestDB(BaseDB):
         """
         workspace = Query()
         if admin:
-            return self.db.search(workspace.name == name)
+            return self.table.search(workspace.name == name)
         else:
-            return self.db.search((workspace.name == name) &
-                                  (workspace.username == username))
+            return self.table.search((workspace.name == name) &
+                                     (workspace.username == username))
 
     def db_search_username(self, username) -> List[Dict]:
         """
@@ -81,7 +82,7 @@ class RestDB(BaseDB):
             :return: a list of records in db that match name with param name
         """
         workspace = Query()
-        return self.db.search(workspace.username == username)
+        return self.table.search(workspace.username == username)
 
     def db_search_identity(self, identity) -> List[Dict]:
         """
@@ -90,7 +91,7 @@ class RestDB(BaseDB):
             :return: a list of records in db that match name with name
         """
         workspace = Query()
-        return self.db.search(workspace.id == identity)[0]
+        return self.table.search(workspace.id == identity)[0]
 
     def db_list_all(self, username, admin) -> List[Dict]:
         """
@@ -98,7 +99,7 @@ class RestDB(BaseDB):
             :return: a list of all records in db
         """
         if admin:
-            return self.db.all()
+            return self.table.all()
         else:
             workspace = Query()
-            return self.db.search(workspace.username == username)
+            return self.table.search(workspace.username == username)

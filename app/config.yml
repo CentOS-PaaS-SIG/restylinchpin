@@ -3,8 +3,6 @@
 workspace_path: /tmp
 # name or path of logger file
 logger_file_name: restylinchpin.log
-#path to users tinydb source file
-users_db_path: users.json
 # path to workspace tinydb source file
 db_path: db.json
 # folder where the inventories are stored

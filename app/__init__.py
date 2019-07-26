@@ -32,7 +32,6 @@ except Exception as x:
 # loads defaults when config.yml does not exists or has been removed
 WORKSPACE_DIR = config.get('workspace_path', '/tmp')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
-USERS_DB_PATH = config.get('users_db_path', 'users.json')
 DB_PATH = config.get('db_path', 'db.json')
 INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
 LATEST_PATH = config.get('linchpin_latest_file_path',
@@ -69,7 +68,7 @@ def auth_required(function):
             :return : returns successful route if success else
                         api-key invalid message
         """
-        db_con = get_connection_users(USERS_DB_PATH)
+        db_con = get_connection_users(DB_PATH)
         api_key = None
         if 'api_key' in request.headers:
             api_key = request.headers['api_key']
@@ -93,7 +92,7 @@ def new_user(current_user):
         :return : response with created username,
                     email, admin status.
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         if not current_user['admin']:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
@@ -126,7 +125,7 @@ def login():
         GET request route for user login
         :return : response with API KEY to be used for making request
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         authorize = request.authorization
         if not authorize or not authorize.username \
@@ -155,7 +154,7 @@ def get_user(current_user, username):
         :return : response with user's username, api_key,
                     email, admin status.
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         if not current_user['admin'] and \
                 not current_user['username'] == username:
@@ -180,7 +179,7 @@ def get_users(current_user):
         :return : response with list of all users
                   present in db.
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         if not current_user['admin']:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
@@ -200,7 +199,7 @@ def delete_api_key(current_user):
         Request args are accepted as /api/v1.0/users?api_key=value
         :return : response with success message
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         api_key = request.args.get('api_key')
         user = db_con.db_get_api_key(api_key)
@@ -224,7 +223,7 @@ def reset_api_key(username):
          Authentication is done using basic auth username, password
          :return : response with success message and new api_key value
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         authorize = request.authorization
         user = db_con.db_get_username(username)
@@ -252,7 +251,7 @@ def promote_user(current_user, username):
         PUT request route for promoting a user to admin status
         :return : response with success message.
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         if not current_user['admin']:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
@@ -274,7 +273,7 @@ def update_user(current_user, user_name):
         :return : response with a list of fields updated
                   for user.
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         if not current_user['admin'] and \
                 not current_user['username'] == user_name:
@@ -314,7 +313,7 @@ def delete_user(current_user, username):
         DELETE request route for deleting a user with given username
         :return : response with success message
     """
-    db_con = get_connection_users(USERS_DB_PATH)
+    db_con = get_connection_users(DB_PATH)
     try:
         if not current_user['admin'] and \
                 not current_user['username'] == username:
@@ -728,7 +727,7 @@ def get_linchpin_inventory(current_user, identity) -> Response:
 
 
 if __name__ == "__main__":
-    create_admin_user(USERS_DB_PATH, ADMIN_USERNAME,
+    create_admin_user(DB_PATH, ADMIN_USERNAME,
                       ADMIN_PASSWORD, ADMIN_EMAIL)
     handler = RotatingFileHandler(LOGGER_FILE,
                                   maxBytes=10000, backupCount=1)

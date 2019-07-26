@@ -619,6 +619,13 @@ def linchpin_destroy(current_user) -> Response:
 @app.route('/api/v1.0/workspaces/<identity>', methods=['PUT'])
 @auth_required
 def linchpin_update_pinfile(current_user, identity) -> Response:
+    """
+        PUT request route for updating a pinfile's contents
+        RequestBody: { pinfile_content:{json file contents},
+                       pinfile_name:name,
+                       pinfile_path:path_to_pinfile }
+       return : response with successful pinfile updation status
+    """
     db_con = get_connection(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])
@@ -658,6 +665,12 @@ def linchpin_update_pinfile(current_user, identity) -> Response:
 @app.route('/api/v1.0/workspaces/<identity>/linchpin_latest', methods=['POST'])
 @auth_required
 def get_linchpin_latest(current_user, identity) -> Response:
+    """
+        POST request route for getting linchpin.latest file from user's
+        provisioned workspace
+        RequestBody: { linchpin_latest_path:path_to_linchpin.latest }
+        return : response with workspace id and linchpin.latest file contents
+    """
     db_con = get_connection(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])
@@ -693,6 +706,12 @@ def get_linchpin_latest(current_user, identity) -> Response:
 @app.route('/api/v1.0/workspaces/<identity>/inventory', methods=['POST'])
 @auth_required
 def get_linchpin_inventory(current_user, identity) -> Response:
+    """
+        POST request route for getting contents of all inventory files from
+        user's provisioned workspace
+        RequestBody: { linchpin_inventory_path:path_to_inventories_folder }
+        return : response with workspace id and all inventory files contents
+    """
     db_con = get_connection(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])

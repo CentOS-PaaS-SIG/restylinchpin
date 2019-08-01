@@ -7,6 +7,7 @@ import uuid
 import shutil
 import logging
 import subprocess
+from ansible_vault import Vault
 from app.response_messages import response, errors
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, Response, abort, make_response
@@ -30,7 +31,7 @@ except Exception as x:
 
 
 # loads defaults when config.yml does not exists or has been removed
-WORKSPACE_DIR = config.get('workspace_path', '/tmp')
+WORKSPACE_DIR = config.get('workspace_path', '/')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
 INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
@@ -41,6 +42,7 @@ LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
+CREDS_PATH = config.get('creds_path', '/')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -738,6 +740,47 @@ def get_linchpin_inventory(current_user, identity) -> Response:
             inventory_list.append(inventory)
         return jsonify(id=identity,
                        inventory=inventory_list)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/credentials', methods=['POST'])
+@auth_required
+def upload_credentials(current_user) -> Response:
+    db_con = get_connection_users(DB_PATH)
+    try:
+        file_name = request.form['file_name']
+        encrypted = request.form['encrypted']
+        if current_user['creds_folder'] is None:
+            creds_folder = current_user['username'] + "_" + str(uuid.uuid4())
+            db_con.db_update_creds_folder(current_user['username'],
+                                          creds_folder)
+            os.makedirs(WORKSPACE_PATH + CREDS_PATH + creds_folder)
+        else:
+            creds_folder = current_user['creds_folder']
+        if request.files:
+            file = request.files["file"]
+            file_read = file.read()
+        else:
+            file_read = request.form["file"]
+        if encrypted == "True":
+            if request.files:
+                with open(WORKSPACE_PATH + CREDS_PATH + creds_folder + "/" + file_name + ".yml", 'wb') as yaml_file:
+                    print(os.getcwd())
+                    yaml_file.write(file_read)
+            else:
+                with open(WORKSPACE_PATH + CREDS_PATH + creds_folder + "/" + file_name + ".yml", 'w') as yaml_file:
+                    print(os.getcwd())
+                    yaml_file.write(file_read)
+        else:
+            vault_pass = request.form['vault_pass']
+            vault = Vault(vault_pass)
+            vault.dump(file_read, open(WORKSPACE_PATH + CREDS_PATH + creds_folder + "/" + file_name + ".yml", 'wb'))
+        return jsonify(message="Credentials uploaded successfully")
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR)

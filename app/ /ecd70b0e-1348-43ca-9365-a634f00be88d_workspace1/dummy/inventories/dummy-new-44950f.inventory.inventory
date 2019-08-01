@@ -1,0 +1,18 @@
+[all:vars]
+ansible_user = root
+ansible_private_key_file = {{ lookup('env', 'TESTLP') | default('/tmp', true) }}/CSS/keystore/css-central
+
+[test]
+test hostname=test
+
+[example]
+web-0 hostname=web-0
+web-1 hostname=web-1
+web-2 hostname=web-2
+
+[all]
+test hostname=test
+web-2 hostname=web-2
+web-1 hostname=web-1
+web-0 hostname=web-0
+

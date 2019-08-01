@@ -12,6 +12,8 @@ linchpin_latest_file_path: /dummy/resources/linchpin.latest
 # path to Pinfile for dummy workspace
 pinfile_json_path: /dummy/PinFile.json
 #details for admin user login
+#file name for linchpin.latest file in resources
+linchpin_latest_name: linchpin.latest
 admin_username: admin
 admin_password: password
 admin_email: admin@xyz

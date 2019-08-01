@@ -15,7 +15,7 @@ from flask_swagger_ui import get_swaggerui_blueprint
 from functools import wraps
 from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
     create_cmd_up_pinfile, check_workspace_empty, get_connection_users, \
-    create_admin_user
+    create_admin_user, check_workspace_has_pinfile
 
 app = Flask(__name__)
 
@@ -37,6 +37,7 @@ INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
 LATEST_PATH = config.get('linchpin_latest_file_path',
                          '/dummy/resources/linchpin.latest')
 PINFILE_JSON_PATH = config.get('pinfile_json_path', '/dummy/PinFile.json')
+LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
@@ -611,6 +612,136 @@ def linchpin_destroy(current_user) -> Response:
                        message=errors.KEY_ERROR_DESTROY)
     except Exception as e:
         db_con.db_update(identity, response.DESTROY_FAILED)
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/workspaces/<identity>', methods=['PUT'])
+@auth_required
+def linchpin_update_pinfile(current_user, identity) -> Response:
+    """
+        PUT request route for updating a pinfile's contents
+        RequestBody: { pinfile_content:{json file contents},
+                       pinfile_name:name,
+                       pinfile_path:path_to_pinfile }
+       return : response with successful pinfile updation status
+    """
+    db_con = get_connection(DB_PATH)
+    try:
+        workspace = db_con.db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace:
+            return jsonify(message=response.NOT_FOUND)
+        if not current_user['admin']:
+            workspace = db_con.db_search_identity(identity)
+            if not db_con.db_search(workspace['name'], current_user['admin'],
+                                    current_user['username']):
+                return jsonify(message=response.NOT_FOUND)
+        data = request.json
+        pinfile_content = data['pinfile_content']
+        if 'pinfile_path' in data:
+            pinfile_path = data['pinfile_path']
+            check_path = identity + pinfile_path
+        else:
+            check_path = identity
+        if 'pinfile_name' in data:
+            pinfile_name = data['pinfile_name']
+        else:
+            pinfile_name = "PinFile.json"
+        json_pinfile_path = WORKSPACE_PATH + "/" + check_path + pinfile_name
+        if not check_workspace_has_pinfile(check_path, pinfile_name,
+                                           WORKSPACE_PATH):
+            return jsonify(status=response.PINFILE_NOT_FOUND)
+        with open(json_pinfile_path, 'w') as json_data:
+            json.dump(pinfile_content, json_data)
+        return jsonify(message=response.PINFILE_UPDATED)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/workspaces/<identity>/linchpin_latest', methods=['POST'])
+@auth_required
+def get_linchpin_latest(current_user, identity) -> Response:
+    """
+        POST request route for getting linchpin.latest file from user's
+        provisioned workspace
+        RequestBody: { linchpin_latest_path:path_to_linchpin.latest }
+        return : response with workspace id and linchpin.latest file contents
+    """
+    db_con = get_connection(DB_PATH)
+    try:
+        workspace = db_con.db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace:
+            return jsonify(message=response.NOT_FOUND)
+        if not current_user['admin']:
+            workspace = db_con.db_search_identity(identity)
+            if not db_con.db_search(workspace['name'], current_user['admin'],
+                                    current_user['username']):
+                return jsonify(message=response.NOT_FOUND)
+        data = request.json
+        if 'linchpin_latest_path' in data:
+            linchpin_latest_path = data['linchpin_latest_path']
+            check_path = linchpin_latest_path
+        else:
+            check_path = "/"
+        linchpin_latest_directory = WORKSPACE_PATH + "/" + identity + check_path
+        if not os.listdir(linchpin_latest_directory).\
+                __contains__(LINCHPIN_LATEST_NAME):
+            return jsonify(message=response.LINCHPIN_LATEST_NOT_FOUND)
+        linchpin_latest_path = linchpin_latest_directory + LINCHPIN_LATEST_NAME
+        with open(linchpin_latest_path, 'r') as file:
+            linchpin_latest = json.load(file)
+        return jsonify(id=identity,
+                       latest=linchpin_latest)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/workspaces/<identity>/inventory', methods=['POST'])
+@auth_required
+def get_linchpin_inventory(current_user, identity) -> Response:
+    """
+        POST request route for getting contents of all inventory files from
+        user's provisioned workspace
+        RequestBody: { linchpin_inventory_path:path_to_inventories_folder }
+        return : response with workspace id and all inventory files contents
+    """
+    db_con = get_connection(DB_PATH)
+    try:
+        workspace = db_con.db_search_username(current_user['username'])
+        if not current_user['admin'] and not workspace:
+            return jsonify(message=response.NOT_FOUND)
+        if not current_user['admin']:
+            workspace = db_con.db_search_identity(identity)
+            if not db_con.db_search(workspace['name'], current_user['admin'],
+                                    current_user['username']):
+                return jsonify(message=response.NOT_FOUND)
+        data = request.json
+        inventory_list = []
+        if 'linchpin_inventory_path' in data:
+            linchpin_inventory_path = data['linchpin_inventory_path']
+            check_path = linchpin_inventory_path + "*"
+        else:
+            check_path = "/*"
+        directory_path = glob.glob(WORKSPACE_PATH + "/" + identity +
+                                   check_path)
+        for i in range(0, len(directory_path), 1):
+            with open(directory_path[i], 'r') as data:
+                inventory = data.read().replace('\n', ' ')
+            inventory_list.append(inventory)
+        return jsonify(id=identity,
+                       inventory=inventory_list)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 

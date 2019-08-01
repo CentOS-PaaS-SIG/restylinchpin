@@ -753,6 +753,9 @@ def get_linchpin_inventory(current_user, identity) -> Response:
 def upload_credentials(current_user) -> Response:
     db_con = get_connection_users(DB_PATH)
     try:
+        user = db_con.db_search_name(current_user['username'])
+        if not user:
+            return jsonify(message=response.USER_NOT_FOUND)
         file_name = request.form['file_name']
         encrypted = request.form['encrypted']
         if current_user['creds_folder'] is None:
@@ -767,26 +770,40 @@ def upload_credentials(current_user) -> Response:
             file_read = file.read()
         else:
             file_read = request.form["file"]
-        if encrypted == "True":
+        if encrypted.lower() in ("true", "t"):
             if request.files:
                 with open(WORKSPACE_PATH + CREDS_PATH + creds_folder + "/" + file_name + ".yml", 'wb') as yaml_file:
-                    print(os.getcwd())
                     yaml_file.write(file_read)
             else:
                 with open(WORKSPACE_PATH + CREDS_PATH + creds_folder + "/" + file_name + ".yml", 'w') as yaml_file:
-                    print(os.getcwd())
                     yaml_file.write(file_read)
         else:
             vault_pass = request.form['vault_pass']
             vault = Vault(vault_pass)
             vault.dump(file_read, open(WORKSPACE_PATH + CREDS_PATH + creds_folder + "/" + file_name + ".yml", 'wb'))
-        return jsonify(message="Credentials uploaded successfully")
+        return jsonify(message=response.CREDENTIALS_UPLOADED)
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/credentials/<file_name>', methods=['GET'])
+@auth_required
+def get_credentials(current_user, file_name) -> Response:
+    db_con = get_connection_users(DB_PATH)
+    user = db_con.db_search_name(current_user['username'])
+    if not user:
+        return jsonify(message=response.USER_NOT_FOUND)
+    if not os.listdir(WORKSPACE_PATH + CREDS_PATH + current_user['creds_folder']). \
+            __contains__(file_name):
+        return jsonify(message=response.CREDENTIALS_FILE_NOT_FOUND)
+    with open(WORKSPACE_PATH + CREDS_PATH + current_user['creds_folder'] +
+              "/" + file_name, 'r') as data:
+        credentials = data.read().replace('\n', ' ')
+    return jsonify(credentials=credentials)
 
 
 if __name__ == "__main__":

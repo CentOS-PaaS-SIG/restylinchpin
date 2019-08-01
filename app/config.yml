@@ -1,6 +1,6 @@
 # place where all the created workspaces are stored
 # workspace_path --> place where are the workspaces are created and stored
-workspace_path: /tmp
+workspace_path: /
 # name or path of logger file
 logger_file_name: restylinchpin.log
 # path to workspace tinydb source file
@@ -11,9 +11,11 @@ inventory_path: /dummy/inventories/*
 linchpin_latest_file_path: /dummy/resources/linchpin.latest
 # path to Pinfile for dummy workspace
 pinfile_json_path: /dummy/PinFile.json
-#details for admin user login
 #file name for linchpin.latest file in resources
 linchpin_latest_name: linchpin.latest
+#details for admin user login
 admin_username: admin
 admin_password: password
 admin_email: admin@xyz
+# path to creds folder
+creds_path: /

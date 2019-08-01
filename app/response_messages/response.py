@@ -39,3 +39,5 @@ MISSING_API_KEY = "please provide the api key in request route in "\
 MISSING_USERNAME = "please provide the username in request route in "\
                    "the format route?username=value"
 CREDENTIALS_UPLOADED = "Credentials uploaded successfully"
+CREDENTIALS_UPDATED = "Credentials updated sccessfully"
+CREDENTIALS_DELETED = "Credentials deleted successfully"

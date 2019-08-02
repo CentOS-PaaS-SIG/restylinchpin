@@ -1,1 +1,0 @@
-[{"changed": true, "hosts": ["web-0", "web-1", "web-2"], "dummy_file": "/tmp/dummy.hosts", "failed": false, "resource_type": "dummy_res"}, {"changed": true, "hosts": ["test"], "dummy_file": "/tmp/dummy.hosts", "failed": false, "resource_type": "dummy_res"}]

@@ -1,6 +1,6 @@
 # place where all the created workspaces are stored
 # workspace_path --> place where are the workspaces are created and stored
-workspace_path: /
+workspace_path: /tmp
 # name or path of logger file
 logger_file_name: restylinchpin.log
 # path to workspace tinydb source file
@@ -18,4 +18,4 @@ admin_username: admin
 admin_password: password
 admin_email: admin@xyz
 # path to creds folder
-creds_path: /
+creds_path: /tmp

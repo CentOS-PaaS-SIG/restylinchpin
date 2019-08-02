@@ -38,7 +38,7 @@ class UserRestDB(UserBaseDB):
             param username
         """
         user = Query()
-        return self.table.search(user.username == username)
+        return self.table.search(user.username == username)[0]
 
     def db_list_all(self) -> List[Dict]:
         """
@@ -116,6 +116,7 @@ class UserRestDB(UserBaseDB):
                            'password': password_hash,
                            'email': email}, user.username == username)
 
-    def db_update_creds_folder(self, username,  creds_folder):
+    def db_update_creds_folder(self, username, creds_folder):
         user = Query()
-        self.table.update({'creds_folder': creds_folder}, user.username == username)
+        self.table.update({'creds_folder': creds_folder},
+                          user.username == username)

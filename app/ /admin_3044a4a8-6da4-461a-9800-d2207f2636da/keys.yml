@@ -1,5 +1,0 @@
-Flask>=1.0.3
-linchpin<=1.7.5
-flask-swagger-ui>=3.20.9
-flake8>=3.7.7
-ansible_vault>=1.2.0

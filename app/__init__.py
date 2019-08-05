@@ -42,7 +42,7 @@ LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
-CREDS_PATH = config.get('creds_path', '/tmp')
+CREDS_PATH = config.get('creds_path', '/')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -773,29 +773,25 @@ def upload_credentials(current_user, username) -> Response:
             creds_folder = request.form["creds_folder_name"]
         else:
             if user['creds_folder'] is None:
-                print("now here")
                 creds_folder = username + "_" + str(uuid.uuid4())
                 db_con.db_update_creds_folder(username,
                                               creds_folder)
                 os.makedirs(WORKSPACE_PATH + CREDS_PATH + creds_folder)
             else:
-                print("expecting here")
                 creds_folder = user['creds_folder']
         if request.files:
             file = request.files["file"]
             file_read = file.read()
+            write = 'wb'
         else:
             file_read = request.form["file"]
+            write = 'w'
         if encrypted.lower() in ("true", "t"):
-            if request.files:
-                with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
-                          "/" + file_name + ".yml", 'wb') as yaml_file:
-                    yaml_file.write(file_read)
-            else:
-                with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
-                          "/" + file_name + ".yml", 'w') as yaml_file:
-                    yaml_file.write(file_read)
+            with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
+                      "/" + file_name + ".yml", write) as yaml_file:
+                yaml_file.write(file_read)
         else:
+            print("here")
             vault_pass = request.form['vault_pass']
             vault = Vault(vault_pass)
             vault.dump(file_read, open(WORKSPACE_PATH + CREDS_PATH +
@@ -867,18 +863,15 @@ def update_credentials(current_user, username, file_name) -> Response:
         if request.files:
             file = request.files["file"]
             file_read = file.read()
+            write = 'wb'
         else:
             file_read = request.form["file"]
+            write = 'w'
         encrypted = request.form['encrypted']
         if encrypted.lower() in ("true", "t"):
-            if request.files:
-                with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
-                          "/" + file_name, 'wb') as yaml_file:
-                    yaml_file.write(file_read)
-            else:
-                with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
-                          "/" + file_name, 'w') as yaml_file:
-                    yaml_file.write(file_read)
+            with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
+                      "/" + file_name, write) as yaml_file:
+                yaml_file.write(file_read)
         else:
             vault_pass = request.form['vault_pass']
             vault = Vault(vault_pass)

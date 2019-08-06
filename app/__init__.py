@@ -604,7 +604,6 @@ def linchpin_destroy(current_user, username) -> Response:
         if not current_user['username'] == username \
                 and not current_user['admin']:
             return jsonify(message=errors.UNAUTHORIZED_REQUEST)
-        print(user)
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
@@ -616,7 +615,6 @@ def linchpin_destroy(current_user, username) -> Response:
                 return jsonify(message=response.NOT_FOUND)
         cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH,
                                    WORKSPACE_DIR, user['creds_folder'])
-        print(cmd)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
         db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)
@@ -806,7 +804,6 @@ def upload_credentials(current_user, username) -> Response:
                       "/" + file_name + ".yml", write) as yaml_file:
                 yaml_file.write(file_read)
         else:
-            print("here")
             vault_pass = request.form['vault_pass']
             vault = Vault(vault_pass)
             vault.dump(file_read, open(WORKSPACE_PATH + CREDS_PATH +

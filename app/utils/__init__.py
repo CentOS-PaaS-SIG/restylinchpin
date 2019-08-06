@@ -74,7 +74,8 @@ def create_fetch_cmd(data, identity, workspace_dir) -> List[str]:
 
 
 def create_cmd_workspace(data, identity, action,
-                         workspace_path, workspace_dir) -> List[str]:
+                         workspace_path, workspace_dir,
+                         creds_folder) -> List[str]:
     """
         Creates a list to feed the subprocess for provisioning/
         destroying existing workspaces
@@ -89,6 +90,10 @@ def create_cmd_workspace(data, identity, action,
     else:
         check_path = identity
     cmd = ["linchpin", "-w " + workspace_dir + check_path]
+    if 'creds_path' in data:
+        cmd.extend(("--creds-path", data['creds_path']))
+    else:
+        cmd.extend(("--creds-path", creds_folder))
     if 'pinfile_name' in data:
         cmd.extend(("-p", data['pinfile_name']))
         pinfile_name = data['pinfile_name']
@@ -111,7 +116,8 @@ def create_cmd_up_pinfile(data,
                           identity,
                           workspace_path,
                           workspace_dir,
-                          pinfile_json_path) -> List[str]:
+                          pinfile_json_path,
+                          creds_folder) -> List[str]:
     """
         Creates a list to feed the subprocess for provisioning
         new workspaces instantiated using a pinfile
@@ -124,7 +130,12 @@ def create_cmd_up_pinfile(data,
     with open(json_pinfile_path, 'w') as json_data:
         json.dump(pinfile_content, json_data)
     cmd = ["linchpin", "-w " + workspace_dir + identity + "/dummy", "-p" +
-           "PinFile.json", "up"]
+           "PinFile.json"]
+    if 'creds_path' in data:
+        cmd.extend(("--creds-path", data['creds_path']))
+    else:
+        cmd.extend(("--creds-path", creds_folder))
+    cmd.append("up")
     if 'inventory_format' in data:
         cmd.extend(("--if", data['inventory_format']))
     return cmd

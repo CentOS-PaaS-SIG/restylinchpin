@@ -42,7 +42,7 @@ LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
-CREDS_PATH = config.get('creds_path', '/')
+CREDS_PATH = config.get('creds_path', '/tmp')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -502,9 +502,9 @@ def linchpin_fetch_workspace(current_user) -> Response:
                        message=errors.KEY_ERROR_PARAMS_FETCH)
 
 
-@app.route('/api/v1.0/workspaces/up', methods=['POST'])
+@app.route('/api/v1.0/users/<username>/workspaces/up', methods=['POST'])
 @auth_required
-def linchpin_up(current_user) -> Response:
+def linchpin_up(current_user, username) -> Response:
     """
         POST request route for provisioning workspaces/pinFile already
         created
@@ -518,8 +518,13 @@ def linchpin_up(current_user) -> Response:
     """
     identity = None
     db_con = get_connection(DB_PATH)
+    db_con_users = get_connection_users(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])
+        user = db_con_users.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
@@ -528,6 +533,7 @@ def linchpin_up(current_user) -> Response:
             identity = data['id']
             if not current_user['admin']:
                 workspace = db_con.db_search_identity(identity)
+
                 if not db_con.db_search(workspace['name'],
                                         current_user['admin'],
                                         current_user['username']):
@@ -535,7 +541,8 @@ def linchpin_up(current_user) -> Response:
             if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
             cmd = create_cmd_workspace(data, identity, "up",
-                                       WORKSPACE_PATH, WORKSPACE_DIR)
+                                       WORKSPACE_PATH, WORKSPACE_DIR,
+                                       user['creds_folder'])
         elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
@@ -549,7 +556,8 @@ def linchpin_up(current_user) -> Response:
                                      response.WORKSPACE_REQUESTED,
                                      current_user['username'])
             cmd = create_cmd_up_pinfile(data, identity, WORKSPACE_PATH,
-                                        WORKSPACE_DIR, PINFILE_JSON_PATH)
+                                        WORKSPACE_DIR, PINFILE_JSON_PATH,
+                                        user['creds_folder'])
         else:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -578,9 +586,9 @@ def linchpin_up(current_user) -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/api/v1.0/workspaces/destroy', methods=['POST'])
+@app.route('/api/v1.0/users/<username>/workspaces/destroy', methods=['POST'])
 @auth_required
-def linchpin_destroy(current_user) -> Response:
+def linchpin_destroy(current_user, username) -> Response:
     """
         POST request route for destroying workspaces/resources already created
         or provisioned
@@ -589,8 +597,14 @@ def linchpin_destroy(current_user) -> Response:
     """
     identity = None
     db_con = get_connection(DB_PATH)
+    db_con_users = get_connection_users(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])
+        user = db_con_users.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        print(user)
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
@@ -601,7 +615,8 @@ def linchpin_destroy(current_user) -> Response:
                                     current_user['username']):
                 return jsonify(message=response.NOT_FOUND)
         cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH,
-                                   WORKSPACE_DIR)
+                                   WORKSPACE_DIR, user['creds_folder'])
+        print(cmd)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
         db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)

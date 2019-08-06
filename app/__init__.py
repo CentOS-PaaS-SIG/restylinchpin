@@ -529,6 +529,7 @@ def linchpin_up(current_user, username) -> Response:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
         provision_type = data['provision_type']
+        creds_path = WORKSPACE_PATH + CREDS_PATH + user['creds_folder']
         if provision_type == "workspace":
             identity = data['id']
             if not current_user['admin']:
@@ -542,7 +543,7 @@ def linchpin_up(current_user, username) -> Response:
                 return jsonify(status=response.NOT_FOUND)
             cmd = create_cmd_workspace(data, identity, "up",
                                        WORKSPACE_PATH, WORKSPACE_DIR,
-                                       user['creds_folder'])
+                                       creds_path)
         elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
@@ -557,7 +558,7 @@ def linchpin_up(current_user, username) -> Response:
                                      current_user['username'])
             cmd = create_cmd_up_pinfile(data, identity, WORKSPACE_PATH,
                                         WORKSPACE_DIR, PINFILE_JSON_PATH,
-                                        user['creds_folder'])
+                                        creds_path)
         else:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -608,13 +609,14 @@ def linchpin_destroy(current_user, username) -> Response:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
         identity = data['id']
+        creds_path = WORKSPACE_PATH + CREDS_PATH + user['creds_folder']
         if not current_user['admin']:
             workspace = db_con.db_search_identity(identity)
             if not db_con.db_search(workspace['name'], current_user['admin'],
                                     current_user['username']):
                 return jsonify(message=response.NOT_FOUND)
         cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH,
-                                   WORKSPACE_DIR, user['creds_folder'])
+                                   WORKSPACE_DIR, creds_path)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
         db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)

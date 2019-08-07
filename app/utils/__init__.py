@@ -75,13 +75,14 @@ def create_fetch_cmd(data, identity, workspace_dir) -> List[str]:
 
 def create_cmd_workspace(data, identity, action,
                          workspace_path, workspace_dir,
-                         creds_folder) -> List[str]:
+                         creds_folder_path) -> List[str]:
     """
         Creates a list to feed the subprocess for provisioning/
         destroying existing workspaces
         :param data: JSON data from POST requestBody
         :param identity: unique uuid_name assigned to the workspace
         :param action: up or destroy action
+        :param creds_folder_path: path to the credentials folder
         :return a list for the subprocess to run
     """
     if 'pinfile_path' in data:
@@ -93,7 +94,7 @@ def create_cmd_workspace(data, identity, action,
     if 'creds_path' in data:
         cmd.extend(("--creds-path", data['creds_path']))
     else:
-        cmd.extend(("--creds-path", creds_folder))
+        cmd.extend(("--creds-path", creds_folder_path))
     if 'pinfile_name' in data:
         cmd.extend(("-p", data['pinfile_name']))
         pinfile_name = data['pinfile_name']
@@ -117,12 +118,13 @@ def create_cmd_up_pinfile(data,
                           workspace_path,
                           workspace_dir,
                           pinfile_json_path,
-                          creds_folder) -> List[str]:
+                          creds_folder_path) -> List[str]:
     """
         Creates a list to feed the subprocess for provisioning
         new workspaces instantiated using a pinfile
         :param data: JSON data from POST requestBody
         :param identity: unique uuid_name assigned to the workspace
+        :param creds_folder_path: path to the credentials folder
         :return a list for the subprocess to run
     """
     pinfile_content = data['pinfile_content']
@@ -134,7 +136,7 @@ def create_cmd_up_pinfile(data,
     if 'creds_path' in data:
         cmd.extend(("--creds-path", data['creds_path']))
     else:
-        cmd.extend(("--creds-path", creds_folder))
+        cmd.extend(("--creds-path", creds_folder_path))
     cmd.append("up")
     if 'inventory_format' in data:
         cmd.extend(("--if", data['inventory_format']))

@@ -7,13 +7,14 @@ import uuid
 import shutil
 import logging
 import subprocess
+from ansible_vault import Vault
 from app.response_messages import response, errors
 from logging.handlers import RotatingFileHandler
 from flask import Flask, jsonify, request, Response, abort, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_swagger_ui import get_swaggerui_blueprint
 from functools import wraps
-from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
+from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace, \
     create_cmd_up_pinfile, check_workspace_empty, get_connection_users, \
     create_admin_user, check_workspace_has_pinfile
 
@@ -22,12 +23,11 @@ app = Flask(__name__)
 APP_DIR = os.path.dirname(os.path.realpath(__file__))
 
 try:
-    with open(APP_DIR + '/config.yml', 'r') as f:
+    with open(APP_DIR + 'config.yml', 'r') as f:
         config = yaml.load(f)
 except Exception as x:
     config = {}
     app.logger.error(x)
-
 
 # loads defaults when config.yml does not exists or has been removed
 WORKSPACE_DIR = config.get('workspace_path', '/tmp')
@@ -41,6 +41,7 @@ LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
+CREDS_PATH = config.get('creds_path', '/tmp')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -81,6 +82,7 @@ def auth_required(function):
         except Exception as e:
             return jsonify(message=response.API_KEY_INVALID, status=e)
         return function(current_user, *args, **kwargs)
+
     return decorated
 
 
@@ -101,7 +103,7 @@ def new_user(current_user):
         email = request.json.get('email')
         api_key = str(uuid.uuid4())
         if username is None or password is None:
-            abort(errors.ERROR_STATUS)    # missing arguments
+            abort(errors.ERROR_STATUS)  # missing arguments
         if db_con.db_get_username(username):
             return jsonify(message=response.USER_ALREADY_EXISTS)
         hashed_password = generate_password_hash(password, method='sha256')
@@ -355,8 +357,8 @@ def linchpin_init(current_user) -> Response:
             else:
                 # Checking if workspace name contains any special characters
                 output = subprocess.Popen(["linchpin", "-w " +
-                                          WORKSPACE_DIR + identity +
-                                          "/", "init"], stdout=subprocess.PIPE)
+                                           WORKSPACE_DIR + identity +
+                                           "/", "init"], stdout=subprocess.PIPE)
                 db_con.db_update(identity, response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
@@ -431,7 +433,7 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
     db_con = get_connection(DB_PATH)
     try:
         # path specifying location of working directory inside server
-        workspace_owner_user =\
+        workspace_owner_user = \
             db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
@@ -481,7 +483,8 @@ def linchpin_fetch_workspace(current_user) -> Response:
             else:
                 output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
                 output.communicate()
-                if check_workspace_empty(identity, WORKSPACE_PATH):
+                if check_workspace_empty(identity, WORKSPACE_PATH,
+                                         WORKSPACE_DIR):
                     db_con.db_update(identity,
                                      response.WORKSPACE_FAILED)
                     return jsonify(status=response.EMPTY_WORKSPACE)
@@ -500,9 +503,9 @@ def linchpin_fetch_workspace(current_user) -> Response:
                        message=errors.KEY_ERROR_PARAMS_FETCH)
 
 
-@app.route('/api/v1.0/workspaces/up', methods=['POST'])
+@app.route('/api/v1.0/users/<username>/workspaces/up', methods=['POST'])
 @auth_required
-def linchpin_up(current_user) -> Response:
+def linchpin_up(current_user, username) -> Response:
     """
         POST request route for provisioning workspaces/pinFile already
         created
@@ -516,29 +519,53 @@ def linchpin_up(current_user) -> Response:
     """
     identity = None
     db_con = get_connection(DB_PATH)
+    db_con_users = get_connection_users(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])
+        user = db_con_users.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
         provision_type = data['provision_type']
+        creds_path = WORKSPACE_PATH + CREDS_PATH + user['creds_folder']
         if provision_type == "workspace":
             identity = data['id']
             if not current_user['admin']:
                 workspace = db_con.db_search_identity(identity)
+
                 if not db_con.db_search(workspace['name'],
                                         current_user['admin'],
                                         current_user['username']):
                     return jsonify(message=response.NOT_FOUND)
             if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
+            if 'pinfile_path' in data:
+                pinfile_path = data['pinfile_path']
+                check_path = identity + pinfile_path
+            else:
+                check_path = identity
+            if 'pinfile_name' in data:
+                pinfile_name = data['pinfile_name']
+            else:
+                pinfile_name = "PinFile"
+            if not check_workspace_has_pinfile(check_path, pinfile_name,
+                                               WORKSPACE_PATH):
+                return jsonify(status=response.PINFILE_NOT_FOUND)
+
             cmd = create_cmd_workspace(data, identity, "up",
-                                       WORKSPACE_PATH, WORKSPACE_DIR)
+                                       WORKSPACE_PATH, WORKSPACE_DIR,
+                                       creds_path)
         elif provision_type == "pinfile":
             if 'name' in data:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
                 identity = str(uuid.uuid4())
+            pinfile_content = data['pinfile_content']
+            json_pinfile_path = \
+                WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
             precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
@@ -546,8 +573,11 @@ def linchpin_up(current_user) -> Response:
             db_con.db_insert_no_name(identity,
                                      response.WORKSPACE_REQUESTED,
                                      current_user['username'])
-            cmd = create_cmd_up_pinfile(data, identity, WORKSPACE_PATH,
-                                        WORKSPACE_DIR, PINFILE_JSON_PATH)
+            with open(json_pinfile_path, 'w') as json_data:
+                json.dump(pinfile_content, json_data)
+            cmd = create_cmd_up_pinfile(data, identity,
+                                        WORKSPACE_DIR,
+                                        creds_path)
         else:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
@@ -576,9 +606,9 @@ def linchpin_up(current_user) -> Response:
         return jsonify(status=errors.ERROR_STATUS, message=str(e))
 
 
-@app.route('/api/v1.0/workspaces/destroy', methods=['POST'])
+@app.route('/api/v1.0/users/<username>/workspaces/destroy', methods=['POST'])
 @auth_required
-def linchpin_destroy(current_user) -> Response:
+def linchpin_destroy(current_user, username) -> Response:
     """
         POST request route for destroying workspaces/resources already created
         or provisioned
@@ -587,19 +617,25 @@ def linchpin_destroy(current_user) -> Response:
     """
     identity = None
     db_con = get_connection(DB_PATH)
+    db_con_users = get_connection_users(DB_PATH)
     try:
         workspace = db_con.db_search_username(current_user['username'])
+        user = db_con_users.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
         if not current_user['admin'] and not workspace:
             return jsonify(message=response.NOT_FOUND)
         data = request.json  # Get request body
         identity = data['id']
+        creds_path = WORKSPACE_PATH + CREDS_PATH + user['creds_folder']
         if not current_user['admin']:
             workspace = db_con.db_search_identity(identity)
             if not db_con.db_search(workspace['name'], current_user['admin'],
                                     current_user['username']):
                 return jsonify(message=response.NOT_FOUND)
         cmd = create_cmd_workspace(data, identity, "destroy", WORKSPACE_PATH,
-                                   WORKSPACE_DIR)
+                                   WORKSPACE_DIR, creds_path)
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
         db_con.db_update(identity, response.DESTROY_STATUS_SUCCESS)
@@ -688,7 +724,7 @@ def get_linchpin_latest(current_user, identity) -> Response:
         else:
             check_path = "/"
         linchpin_latest_directory = WORKSPACE_PATH + "/" + identity + check_path
-        if not os.listdir(linchpin_latest_directory).\
+        if not os.listdir(linchpin_latest_directory). \
                 __contains__(LINCHPIN_LATEST_NAME):
             return jsonify(message=response.LINCHPIN_LATEST_NOT_FOUND)
         linchpin_latest_path = linchpin_latest_directory + LINCHPIN_LATEST_NAME
@@ -720,7 +756,8 @@ def get_linchpin_inventory(current_user, identity) -> Response:
             return jsonify(message=response.NOT_FOUND)
         if not current_user['admin']:
             workspace = db_con.db_search_identity(identity)
-            if not db_con.db_search(workspace['name'], current_user['admin'],
+            if not db_con.db_search(workspace['name'],
+                                    current_user['admin'],
                                     current_user['username']):
                 return jsonify(message=response.NOT_FOUND)
         data = request.json
@@ -741,6 +778,170 @@ def get_linchpin_inventory(current_user, identity) -> Response:
     except (KeyError, ValueError, TypeError):
         return jsonify(status=errors.ERROR_STATUS,
                        message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/users/<username>/credentials', methods=['POST'])
+@auth_required
+def upload_credentials(current_user, username) -> Response:
+    """
+        POST request for uploading credentials to user account
+        RequestBody: {  file : text or attached file
+                        file_name : name,
+                        encrypted: boolean,
+                        vault_pass: ansible vault password
+                    }
+        return : response with successful credential upload status
+    """
+    db_con = get_connection_users(DB_PATH)
+    try:
+        user = db_con.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        file_name = request.form['file_name']
+        encrypted = request.form['encrypted']
+        if 'creds_folder_name' in request.form:
+            creds_folder = request.form["creds_folder_name"]
+        else:
+            if user['creds_folder'] is None:
+                creds_folder = username + "_" + str(uuid.uuid4())
+                db_con.db_update_creds_folder(username,
+                                              creds_folder)
+                os.makedirs(WORKSPACE_PATH + CREDS_PATH + creds_folder)
+            else:
+                creds_folder = user['creds_folder']
+        if request.files:
+            file = request.files["file"]
+            file_read = file.read()
+            write = 'wb'
+        else:
+            file_read = request.form["file"]
+            write = 'w'
+        if encrypted.lower() in ("true", "t"):
+            with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
+                      "/" + file_name + ".yml", write) as yaml_file:
+                yaml_file.write(file_read)
+        else:
+            vault_pass = request.form['vault_pass']
+            vault = Vault(vault_pass)
+            vault.dump(file_read, open(WORKSPACE_PATH + CREDS_PATH +
+                                       creds_folder + "/" + file_name +
+                                       ".yml", 'wb'))
+        return jsonify(message=response.CREDENTIALS_UPLOADED)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/users/<username>/credentials/<file_name>',
+           methods=['GET'])
+@auth_required
+def get_credentials(current_user, file_name, username) -> Response:
+    """
+        GET request to retrieve credentials from a credential file
+        return : response with encrypted credentials from file
+    """
+    db_con = get_connection_users(DB_PATH)
+    try:
+        user = db_con.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        if not os.listdir(WORKSPACE_PATH + CREDS_PATH + user['creds_folder']). \
+                __contains__(file_name):
+            return jsonify(message=response.CREDENTIALS_FILE_NOT_FOUND)
+        with open(WORKSPACE_PATH + CREDS_PATH + user['creds_folder'] +
+                  "/" + file_name, 'r') as data:
+            credentials = data.read().replace('\n', ' ')
+        return jsonify(credentials=credentials)
+    except (KeyError, ValueError, TypeError):
+        return jsonify(status=errors.ERROR_STATUS,
+                       message=errors.KEY_ERROR)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/users/<username>/credentials/<file_name>',
+           methods=['PUT'])
+@auth_required
+def update_credentials(current_user, username, file_name) -> Response:
+    """
+        PUT request for updating credentials to user account
+        RequestBody: {  file : updated text or updated attached file
+                        encrypted: boolean,
+                        vault_pass: ansible vault password
+                        }
+        return : response with successful credential update status
+     """
+    db_con = get_connection_users(DB_PATH)
+    try:
+        user = db_con.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        if 'creds_folder_name' not in request.form:
+            creds_folder = user['creds_folder']
+        else:
+            creds_folder = request.form['creds_folder_name']
+        if not os.listdir(WORKSPACE_PATH + CREDS_PATH + creds_folder). \
+                __contains__(file_name):
+            return jsonify(message=response.CREDENTIALS_FILE_NOT_FOUND)
+        if request.files:
+            file = request.files["file"]
+            file_read = file.read()
+            write = 'wb'
+        else:
+            file_read = request.form["file"]
+            write = 'w'
+        encrypted = request.form['encrypted']
+        if encrypted.lower() in ("true", "t"):
+            with open(WORKSPACE_PATH + CREDS_PATH + creds_folder +
+                      "/" + file_name, write) as yaml_file:
+                yaml_file.write(file_read)
+        else:
+            vault_pass = request.form['vault_pass']
+            vault = Vault(vault_pass)
+            vault.dump(file_read, open(WORKSPACE_PATH + CREDS_PATH +
+                                       creds_folder + "/" + file_name, 'wb'))
+        return jsonify(message=response.CREDENTIALS_UPDATED)
+    except Exception as e:
+        app.logger.error(e)
+        return jsonify(status=errors.ERROR_STATUS, message=str(e))
+
+
+@app.route('/api/v1.0/users/<username>/credentials/<file_name>',
+           methods=['DELETE'])
+@auth_required
+def delete_credentials(current_user, username, file_name) -> Response:
+    """
+        DELETE request to delete a credential file
+        return : response with successful delete status
+    """
+    db_con = get_connection_users(DB_PATH)
+    try:
+        user = db_con.db_search_name(username)
+        if not current_user['username'] == username \
+                and not current_user['admin']:
+            return jsonify(message=errors.UNAUTHORIZED_REQUEST)
+        if 'creds_folder_name' not in request.form:
+            creds_folder = user['creds_folder']
+        else:
+            creds_folder = request.form['creds_folder_name']
+        for w in os.listdir(WORKSPACE_PATH + CREDS_PATH +
+                            creds_folder):
+            if w == file_name:
+                os.remove(WORKSPACE_PATH + CREDS_PATH +
+                          creds_folder + "/" + w)
+                return jsonify(status=response.CREDENTIALS_DELETED,
+                               mimetype='application/json')
+        return jsonify(status=response.CREDENTIALS_FILE_NOT_FOUND)
     except Exception as e:
         app.logger.error(e)
         return jsonify(status=errors.ERROR_STATUS, message=str(e))

@@ -3,6 +3,7 @@ DELETE_SUCCESS = "Workspace deleted successfully"
 PROVISION_SUCCESS = "Workspace provisioned successfully"
 DESTROY_SUCCESS = "Workspace/resources destroyed successfully"
 NOT_FOUND = "Workspace does not exist"
+NOT_FOUND_USER = "User account does not exist"
 DUPLICATE_WORKSPACE = "Workspace with same name found," \
                       "try again by renaming"
 EMPTY_WORKSPACE = "Only public repositories can be "\
@@ -19,6 +20,7 @@ PINFILE_UPDATED = "Pinfile for workspace is updated"
 LINCHPIN_LATEST_NOT_FOUND = "linchpin.latest not found. " \
                             "Please check that it exists"\
                             " or specify linchpin_latest_path in request"
+CREDENTIALS_FILE_NOT_FOUND = "No credential file found with this name"
 DESTROY_STATUS_SUCCESS = "Destroyed"
 DESTROY_FAILED = "FAILED destroy"
 STATUS_OK = "200 OK"
@@ -36,3 +38,6 @@ MISSING_API_KEY = "please provide the api key in request route in "\
                   "the format route?api_key=value"
 MISSING_USERNAME = "please provide the username in request route in "\
                    "the format route?username=value"
+CREDENTIALS_UPLOADED = "Credentials uploaded successfully"
+CREDENTIALS_UPDATED = "Credentials updated sccessfully"
+CREDENTIALS_DELETED = "Credentials deleted successfully"

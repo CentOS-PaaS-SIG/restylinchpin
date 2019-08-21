@@ -42,3 +42,7 @@ class UserBaseDB(ABC):
     @abstractmethod
     def db_update(self, username, updated_username, password_hash, email):
         pass
+
+    @abstractmethod
+    def db_update_creds_folder(self, username, creds_folder):
+        pass

@@ -10,7 +10,8 @@ before_script: cd app
 
 script:
   - flake8 --exclude=\.eggs,tests,docs --ignore=E124,E303,W504 --max-line-length 80 .
-  - python3 tests/UnitTest.py
+  - cd..
+  - python3 app/tests/UnitTest.py
 
 deploy:
   provider: pypi

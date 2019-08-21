@@ -14,7 +14,7 @@ from flask import Flask, jsonify, request, Response, abort, make_response
 from werkzeug.security import generate_password_hash, check_password_hash
 from flask_swagger_ui import get_swaggerui_blueprint
 from functools import wraps
-from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace,\
+from app.utils import get_connection, create_fetch_cmd, create_cmd_workspace, \
     create_cmd_up_pinfile, check_workspace_empty, get_connection_users, \
     create_admin_user, check_workspace_has_pinfile
 
@@ -28,7 +28,6 @@ try:
 except Exception as x:
     config = {}
     app.logger.error(x)
-
 
 # loads defaults when config.yml does not exists or has been removed
 WORKSPACE_DIR = config.get('workspace_path', '/tmp')
@@ -83,6 +82,7 @@ def auth_required(function):
         except Exception as e:
             return jsonify(message=response.API_KEY_INVALID, status=e)
         return function(current_user, *args, **kwargs)
+
     return decorated
 
 
@@ -103,7 +103,7 @@ def new_user(current_user):
         email = request.json.get('email')
         api_key = str(uuid.uuid4())
         if username is None or password is None:
-            abort(errors.ERROR_STATUS)    # missing arguments
+            abort(errors.ERROR_STATUS)  # missing arguments
         if db_con.db_get_username(username):
             return jsonify(message=response.USER_ALREADY_EXISTS)
         hashed_password = generate_password_hash(password, method='sha256')
@@ -357,8 +357,8 @@ def linchpin_init(current_user) -> Response:
             else:
                 # Checking if workspace name contains any special characters
                 output = subprocess.Popen(["linchpin", "-w " +
-                                          WORKSPACE_DIR + identity +
-                                          "/", "init"], stdout=subprocess.PIPE)
+                                           WORKSPACE_DIR + identity +
+                                           "/", "init"], stdout=subprocess.PIPE)
                 db_con.db_update(identity, response.WORKSPACE_SUCCESS)
                 return jsonify(name=data["name"], id=identity,
                                status=response.CREATE_SUCCESS,
@@ -433,7 +433,7 @@ def linchpin_delete_workspace(current_user, identity) -> Response:
     db_con = get_connection(DB_PATH)
     try:
         # path specifying location of working directory inside server
-        workspace_owner_user =\
+        workspace_owner_user = \
             db_con.db_search_username(current_user['username'])
         if not current_user['admin'] and not workspace_owner_user:
             return jsonify(message=response.NOT_FOUND)
@@ -564,7 +564,8 @@ def linchpin_up(current_user, username) -> Response:
             else:
                 identity = str(uuid.uuid4())
             pinfile_content = data['pinfile_content']
-            json_pinfile_path = WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
+            json_pinfile_path = \
+                WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
             precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
@@ -723,7 +724,7 @@ def get_linchpin_latest(current_user, identity) -> Response:
         else:
             check_path = "/"
         linchpin_latest_directory = WORKSPACE_PATH + "/" + identity + check_path
-        if not os.listdir(linchpin_latest_directory).\
+        if not os.listdir(linchpin_latest_directory). \
                 __contains__(LINCHPIN_LATEST_NAME):
             return jsonify(message=response.LINCHPIN_LATEST_NOT_FOUND)
         linchpin_latest_path = linchpin_latest_directory + LINCHPIN_LATEST_NAME

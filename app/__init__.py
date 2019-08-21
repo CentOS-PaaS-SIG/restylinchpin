@@ -23,7 +23,7 @@ app = Flask(__name__)
 APP_DIR = os.path.dirname(os.path.realpath(__file__))
 
 try:
-    with open(APP_DIR + '/config.yml', 'r') as f:
+    with open(APP_DIR + 'config.yml', 'r') as f:
         config = yaml.load(f)
 except Exception as x:
     config = {}
@@ -564,8 +564,7 @@ def linchpin_up(current_user, username) -> Response:
             else:
                 identity = str(uuid.uuid4())
             pinfile_content = data['pinfile_content']
-            json_pinfile_path = WORKSPACE_PATH + "/" + identity +\
-                                PINFILE_JSON_PATH
+            json_pinfile_path = WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
             precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
@@ -582,8 +581,7 @@ def linchpin_up(current_user, username) -> Response:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        linchpin_latest_path = WORKSPACE_PATH + "/" + identity + \
-                               LATEST_PATH
+        linchpin_latest_path = WORKSPACE_PATH + "/" + identity + LATEST_PATH
         with open(linchpin_latest_path, 'r') as file:
             linchpin_latest = json.load(file)
         directory_path = glob.glob(WORKSPACE_PATH + "/" + identity +

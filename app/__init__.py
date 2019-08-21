@@ -483,7 +483,8 @@ def linchpin_fetch_workspace(current_user) -> Response:
             else:
                 output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
                 output.communicate()
-                if check_workspace_empty(identity, WORKSPACE_PATH, WORKSPACE_DIR):
+                if check_workspace_empty(identity, WORKSPACE_PATH,
+                                         WORKSPACE_DIR):
                     db_con.db_update(identity,
                                      response.WORKSPACE_FAILED)
                     return jsonify(status=response.EMPTY_WORKSPACE)
@@ -563,7 +564,8 @@ def linchpin_up(current_user, username) -> Response:
             else:
                 identity = str(uuid.uuid4())
             pinfile_content = data['pinfile_content']
-            json_pinfile_path = WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
+            json_pinfile_path = WORKSPACE_PATH + "/" + identity +\
+                                PINFILE_JSON_PATH
             precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
@@ -580,7 +582,8 @@ def linchpin_up(current_user, username) -> Response:
             raise ValueError
         output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
         output.communicate()
-        linchpin_latest_path = WORKSPACE_PATH + "/" + identity + LATEST_PATH
+        linchpin_latest_path = WORKSPACE_PATH + "/" + identity + \
+                               LATEST_PATH
         with open(linchpin_latest_path, 'r') as file:
             linchpin_latest = json.load(file)
         directory_path = glob.glob(WORKSPACE_PATH + "/" + identity +

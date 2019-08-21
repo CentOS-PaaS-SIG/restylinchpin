@@ -1,10 +1,7 @@
 import os
-import json
 import uuid
 from app.data_access_layer import RestDB
 from app.data_access_layer import UserRestDB
-from app.response_messages import response
-from flask import jsonify
 from typing import List
 from werkzeug.security import generate_password_hash
 

@@ -97,12 +97,6 @@ def create_cmd_workspace(data, identity, action,
         cmd.extend(("--creds-path", creds_folder_path))
     if 'pinfile_name' in data:
         cmd.extend(("-p", data['pinfile_name']))
-        pinfile_name = data['pinfile_name']
-    else:
-        pinfile_name = "PinFile"
-    if not check_workspace_has_pinfile(check_path, pinfile_name,
-                                       workspace_path):
-        return jsonify(status=response.PINFILE_NOT_FOUND)
     cmd.append(action)
     if 'tx_id' in data:
         cmd.extend(("-t", data['tx_id']))
@@ -115,9 +109,7 @@ def create_cmd_workspace(data, identity, action,
 
 def create_cmd_up_pinfile(data,
                           identity,
-                          workspace_path,
                           workspace_dir,
-                          pinfile_json_path,
                           creds_folder_path) -> List[str]:
     """
         Creates a list to feed the subprocess for provisioning
@@ -127,10 +119,6 @@ def create_cmd_up_pinfile(data,
         :param creds_folder_path: path to the credentials folder
         :return a list for the subprocess to run
     """
-    pinfile_content = data['pinfile_content']
-    json_pinfile_path = workspace_path + "/" + identity + pinfile_json_path
-    with open(json_pinfile_path, 'w') as json_data:
-        json.dump(pinfile_content, json_data)
     cmd = ["linchpin", "-w " + workspace_dir + identity + "/dummy", "-p" +
            "PinFile.json"]
     if 'creds_path' in data:
@@ -153,7 +141,7 @@ def check_workspace_has_pinfile(name, pinfile_name, workspace_path) -> bool:
     return os.listdir(workspace_path + "/" + name).__contains__(pinfile_name)
 
 
-def check_workspace_empty(name, workspace_path) -> bool:
+def check_workspace_empty(name, workspace_path, working_dir) -> bool:
     """
         Verifies if a workspace fetched/created is empty
         :param name: name of the workspace to be verified

@@ -31,7 +31,7 @@ except Exception as x:
 
 
 # loads defaults when config.yml does not exists or has been removed
-WORKSPACE_DIR = config.get('workspace_path', '/tmp')
+WORKSPACE_DIR = config.get('workspace_path', '/tests/')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
 INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
@@ -42,7 +42,7 @@ LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
-CREDS_PATH = config.get('creds_path', '/tmp')
+CREDS_PATH = config.get('creds_path', '/')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'
@@ -483,7 +483,7 @@ def linchpin_fetch_workspace(current_user) -> Response:
             else:
                 output = subprocess.Popen(cmd, stdout=subprocess.PIPE)
                 output.communicate()
-                if check_workspace_empty(identity, WORKSPACE_PATH):
+                if check_workspace_empty(identity, WORKSPACE_PATH, WORKSPACE_DIR):
                     db_con.db_update(identity,
                                      response.WORKSPACE_FAILED)
                     return jsonify(status=response.EMPTY_WORKSPACE)
@@ -541,6 +541,19 @@ def linchpin_up(current_user, username) -> Response:
                     return jsonify(message=response.NOT_FOUND)
             if not os.path.exists(WORKSPACE_PATH + "/" + identity):
                 return jsonify(status=response.NOT_FOUND)
+            if 'pinfile_path' in data:
+                pinfile_path = data['pinfile_path']
+                check_path = identity + pinfile_path
+            else:
+                check_path = identity
+            if 'pinfile_name' in data:
+                pinfile_name = data['pinfile_name']
+            else:
+                pinfile_name = "PinFile"
+            if not check_workspace_has_pinfile(check_path, pinfile_name,
+                                               WORKSPACE_PATH):
+                return jsonify(status=response.PINFILE_NOT_FOUND)
+
             cmd = create_cmd_workspace(data, identity, "up",
                                        WORKSPACE_PATH, WORKSPACE_DIR,
                                        creds_path)
@@ -549,6 +562,8 @@ def linchpin_up(current_user, username) -> Response:
                 identity = str(uuid.uuid4()) + "_" + data['name']
             else:
                 identity = str(uuid.uuid4())
+            pinfile_content = data['pinfile_content']
+            json_pinfile_path = WORKSPACE_PATH + "/" + identity + PINFILE_JSON_PATH
             precmd = ["linchpin", "-w " + WORKSPACE_DIR + identity +
                       "/", "init"]
             output = subprocess.Popen(precmd, stdout=subprocess.PIPE)
@@ -556,8 +571,10 @@ def linchpin_up(current_user, username) -> Response:
             db_con.db_insert_no_name(identity,
                                      response.WORKSPACE_REQUESTED,
                                      current_user['username'])
-            cmd = create_cmd_up_pinfile(data, identity, WORKSPACE_PATH,
-                                        WORKSPACE_DIR, PINFILE_JSON_PATH,
+            with open(json_pinfile_path, 'w') as json_data:
+                json.dump(pinfile_content, json_data)
+            cmd = create_cmd_up_pinfile(data, identity,
+                                        WORKSPACE_DIR,
                                         creds_path)
         else:
             raise ValueError

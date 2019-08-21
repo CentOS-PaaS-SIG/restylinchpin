@@ -31,7 +31,7 @@ except Exception as x:
 
 
 # loads defaults when config.yml does not exists or has been removed
-WORKSPACE_DIR = config.get('workspace_path', '/tests/')
+WORKSPACE_DIR = config.get('workspace_path', '/tmp')
 LOGGER_FILE = config.get('logger_file_name', 'restylinchpin.log')
 DB_PATH = config.get('db_path', 'db.json')
 INVENTORY_PATH = config.get('inventory_path', '/dummy/inventories/*')
@@ -42,7 +42,7 @@ LINCHPIN_LATEST_NAME = config.get('linchpin_latest_name', 'linchpin.latest')
 ADMIN_USERNAME = config.get('admin_username', 'admin')
 ADMIN_PASSWORD = config.get('admin_password', 'password')
 ADMIN_EMAIL = config.get('admin_email', 'email')
-CREDS_PATH = config.get('creds_path', '/')
+CREDS_PATH = config.get('creds_path', '/tmp')
 
 # URL for exposing Swagger UI (without trailing '/')
 SWAGGER_URL = '/api/docs'

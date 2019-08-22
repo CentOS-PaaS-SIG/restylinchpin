@@ -1,5 +1,5 @@
 import unittest
-from app import app
+import app
 from app.data_access_layer import RestDB
 from app.data_access_layer import UserRestDB
 
